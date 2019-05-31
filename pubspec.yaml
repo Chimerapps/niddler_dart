@@ -1,7 +1,8 @@
 name: niddler_dart
 description: Niddler network inspector for dart and flutter!
 version: 0.1.1
-author: Nicola Verbeeck <nicola@chimerapps.com>
+authors:
+  - Nicola Verbeeck <nicolaverbeeck@gmail.com>
 homepage: https://github.com/Chimerapps/niddler_dart
 
 environment:
