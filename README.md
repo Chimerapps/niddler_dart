@@ -1,17 +1,26 @@
-A library for Dart developers.
-
-Created from templates made available by Stagehand under a BSD-style
-[license](https://github.com/dart-lang/stagehand/blob/master/LICENSE).
+Niddler network inspector for dart and flutter
 
 ## Usage
 
 A simple usage example:
 
 ```dart
-import 'package:Niddler_Dart/Niddler_Dart.dart';
+import 'package:niddler_dart/niddler_dart.dart';
 
 main() {
-  var awesome = new Awesome();
+
+final niddlerBuilder = NiddlerBuilder()
+    ..bundleId = 'com.test.test'
+    ..serverInfo = NiddlerServerInfo('Some descriptive name', 'Some description')
+    ..port = 0; //0 to have niddler pick it's own port. Automatic discovery will make this visible
+
+  final niddler = niddlerBuilder.build();
+  await niddler.start();
+  NiddlerInjector.install(niddler);
+  
+  //Make http requests ...
+  
+  await niddler.stop();
 }
 ```
 
@@ -19,4 +28,4 @@ main() {
 
 Please file feature requests and bugs at the [issue tracker][tracker].
 
-[tracker]: http://example.com/issues/replaceme
+[tracker]: https://github.com/Chimerapps/niddler_dart/issues
