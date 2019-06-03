@@ -1,5 +1,7 @@
 Niddler network inspector for dart and flutter
 
+![latestVersion](https://img.shields.io/github/release/Chimerapps/niddler_dart.svg)
+
 ## Usage
 
 A simple usage example:

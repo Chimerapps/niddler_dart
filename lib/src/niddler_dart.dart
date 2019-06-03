@@ -137,6 +137,10 @@ class _NiddlerHttpClient implements HttpClient {
   @override
   Future<HttpClientRequest> openUrl(String method, Uri url) {
     final openRequest = _delegate.openUrl(method, url);
+    if (_niddler.isBlacklisted(url.toString())) {
+      return openRequest;
+    }
+
     return openRequest.then((request) {
       final connectionHeaderValue = request.headers.value('connection');
       if (connectionHeaderValue != null && connectionHeaderValue.toLowerCase() == 'upgrade') return request;

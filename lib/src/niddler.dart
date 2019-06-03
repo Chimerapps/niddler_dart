@@ -35,6 +35,16 @@ class Niddler {
     _implementation.send(response.toJsonString());
   }
 
+  /// Adds the URL pattern to the blacklist. Items in the blacklist will not be reported or retained in the memory cache. Matching happens on the request URL
+  void addBlacklist(RegExp regex) {
+    _implementation.addBlacklist(regex);
+  }
+
+  /// Checks if the given URL matches the current configured blacklist
+  bool isBlacklisted(String url) {
+    return _implementation.isBlacklisted(url);
+  }
+
   /// Starts the server
   Future<bool> start() async {
     return _implementation.start();
@@ -77,6 +87,9 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   final NiddlerMessageCache _messagesCache;
   final NiddlerServer _server;
   final NiddlerServerInfo _serverInfo;
+  final List<RegExp> _blacklist = [];
+  final int protocolVersion = 3;
+  bool _started = false;
   NiddlerServerAnnouncementManager _announcementManager;
 
   _NiddlerImplementation(int maxCacheSize, [int port = 0, String password, String bundleId, this._serverInfo])
@@ -92,14 +105,27 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   }
 
   Future<bool> start() async {
+    _started = true;
     await _server.start();
     await _announcementManager.start();
     return true;
   }
 
   Future<void> stop() async {
+    _started = false;
     await _announcementManager.stop();
     await _server.shutdown();
+  }
+
+  void addBlacklist(RegExp item) {
+    _blacklist.add(item);
+    if (_started && protocolVersion > 3) {
+      _server.sendToAll(_buildBlacklistMessage());
+    }
+  }
+
+  bool isBlacklisted(String url) {
+    return _blacklist.any((item) => item.hasMatch(url));
   }
 
   @override
@@ -108,9 +134,18 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
       final data = {'type': 'serverInfo', 'serverName': _serverInfo.name, 'serverDescription': _serverInfo.description, 'icon': _serverInfo.icon};
       connection.send(jsonEncode(data));
     }
+    if (_blacklist.isNotEmpty && protocolVersion > 3) {
+      connection.send(_buildBlacklistMessage());
+    }
 
     final allMessages = await _messagesCache.allMessages();
     allMessages.forEach(connection.send);
+  }
+
+  String _buildBlacklistMessage() {
+    final Map<String, dynamic> data = {'type': 'staticBlacklist', 'id': '<dart>', 'name': '<dart>'}; // ignore: omit_local_variable_types
+    data['entries'] = _blacklist.map((regex) => {'pattern': regex.pattern, 'enabled': true}).toList();
+    return jsonEncode(data);
   }
 }
 

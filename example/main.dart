@@ -9,14 +9,16 @@ Future<void> main() async {
     ..serverInfo = NiddlerServerInfo('Some descriptive name', 'Some description')
     ..port = 0; //0 to have niddler pick it's own port. Automatic discovery will make this visible
 
-  final niddler = niddlerBuilder.build();
+  final niddler = niddlerBuilder.build()..addBlacklist(RegExp('.*/get'));
   await niddler.start();
   NiddlerInjector.install(niddler);
 
   final value = {'test': 'data'};
 
   final response = await http.post('http://httpbin.org/post', body: json.encode(value), headers: {'content-type': 'application/json'});
+  final response2 = await http.get('http://httpbin.org/get', headers: {'content-type': 'application/json'});
   print('Post body: ${response.body}');
+  print('Get body (blacklisted): ${response2.body}');
 
   await Future.delayed(Duration(seconds: 100));
 
