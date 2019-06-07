@@ -255,7 +255,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     headers.forEach((key, value) => _request.headers[key] = value);
 
     if (requestBodyBytes != null && requestBodyBytes.isNotEmpty) {
-      base64Body(requestBodyBytes).then((byteString) {
+      _base64Body(requestBodyBytes).then((byteString) {
         _request.body = byteString;
         _niddler.logRequest(_request);
       });
@@ -286,7 +286,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
       if (bodyBytes != null && bodyBytes.isNotEmpty) {
         // ignore: unawaited_futures
-        base64Body(bodyBytes).then((byteString) {
+        _base64Body(bodyBytes).then((byteString) {
           niddlerResponse.body = byteString;
           tracer.reset();
           _niddler.logResponse(niddlerResponse);
@@ -523,7 +523,7 @@ void _encodeBase64(_IsolateData body) {
   body.dataPort.send(result);
 }
 
-Future<String> base64Body(List<List<int>> bytes) async {
+Future<String> _base64Body(List<List<int>> bytes) async {
   final resultPort = ReceivePort();
   final errorPort = ReceivePort();
   final isolate = await Isolate.spawn(

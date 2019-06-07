@@ -2,7 +2,9 @@
 // All rights reserved. Use of this source code is governed by
 // an MIT license that can be found in the LICENSE file.
 
+import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'niddler_message.dart';
 import 'niddler_message_cache.dart';
@@ -27,12 +29,12 @@ class Niddler {
 
   /// Supply a new request to niddler
   void logRequest(NiddlerRequest request) {
-    _implementation.send(request.toJsonString());
+    _jsonBody(request).then(_implementation.send);
   }
 
   /// Supply a new response to niddler
   void logResponse(NiddlerResponse response) {
-    _implementation.send(response.toJsonString());
+    _jsonBody(response).then(_implementation.send);
   }
 
   /// Adds the URL pattern to the blacklist. Items in the blacklist will not be reported or retained in the memory cache. Matching happens on the request URL
@@ -161,4 +163,50 @@ class NiddlerServerInfo {
   final String icon;
 
   NiddlerServerInfo(this.name, this.description, {this.icon});
+}
+
+class _IsolateData {
+  final dynamic body;
+  final SendPort dataPort;
+
+  _IsolateData(this.body, this.dataPort);
+}
+
+void _encodeJson(_IsolateData body) {
+  body.dataPort.send(body.body.toJsonString());
+}
+
+Future<String> _jsonBody(body) async {
+  final resultPort = ReceivePort();
+  final errorPort = ReceivePort();
+  final isolate = await Isolate.spawn(
+    _encodeJson,
+    _IsolateData(body, resultPort.sendPort),
+    errorsAreFatal: true,
+    onExit: resultPort.sendPort,
+    onError: errorPort.sendPort,
+  );
+  final result = Completer<String>();
+  errorPort.listen((errorData) {
+    assert(errorData is List<dynamic>);
+    assert(errorData.length == 2);
+    final exception = Exception(errorData[0]);
+    final stack = StackTrace.fromString(errorData[1]);
+    if (result.isCompleted) {
+      Zone.current.handleUncaughtError(exception, stack);
+    } else {
+      result.completeError(exception, stack);
+    }
+  });
+  resultPort.listen((resultData) {
+    assert(resultData == null || resultData is String);
+    if (!result.isCompleted) {
+      result.complete(resultData);
+    }
+  });
+  await result.future;
+  resultPort.close();
+  errorPort.close();
+  isolate.kill();
+  return result.future;
 }
