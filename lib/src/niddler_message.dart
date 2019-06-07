@@ -2,7 +2,13 @@
 // All rights reserved. Use of this source code is governed by
 // an MIT license that can be found in the LICENSE file.
 
+import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
+
+String _encodeBase64(List<int> body) {
+  return const Base64Codec.urlSafe().encode(body);
+}
 
 /// Base for all niddler messages
 abstract class NiddlerMessageBase {
@@ -25,12 +31,12 @@ abstract class NiddlerMessageBase {
   NiddlerMessageBase(this.messageId, this.requestId, this.timeStamp, this.headers);
 
   /// Updates the given (json) data with the values stored in this instance
-  void updateJson(Map<String, dynamic> jsonData) {
+  Future<void> updateJson(Map<String, dynamic> jsonData) async {
     jsonData['messageId'] = messageId;
     jsonData['requestId'] = requestId;
     jsonData['timestamp'] = timeStamp;
     jsonData['headers'] = headers;
-    if (body != null) jsonData['body'] = const Base64Codec.urlSafe().encode(body);
+    if (body != null) jsonData['body'] = await _compute(_encodeBase64, body);
   }
 
   /// Append some binary data to the message
@@ -53,17 +59,17 @@ class NiddlerRequest extends NiddlerMessageBase {
       : super(messageId, requestId, timeStamp, headers);
 
   /// Converts this request to a json object
-  dynamic toJson() {
+  dynamic toJson() async {
     final data = Map<String, dynamic>();
     data['type'] = 'request';
     data['method'] = method;
     data['url'] = url;
-    updateJson(data);
+    await updateJson(data);
     return data;
   }
 
   /// Converts this request to a json string
-  String toJsonString() {
+  Future<String> toJsonString() async {
     return json.encode(toJson());
   }
 }
@@ -100,7 +106,7 @@ class NiddlerResponse extends NiddlerMessageBase {
       : super(messageId, requestId, timeStamp, headers);
 
   /// Converts the response to a json object
-  dynamic toJson() {
+  dynamic toJson() async {
     final data = Map<String, dynamic>();
 
     data['type'] = 'response';
@@ -113,12 +119,72 @@ class NiddlerResponse extends NiddlerMessageBase {
 
     if (actualNetworkRequest != null) data['networkRequest'] = actualNetworkRequest.toJson();
     if (actualNetworkResponse != null) data['networkReply'] = actualNetworkResponse.toJson();
-    updateJson(data);
+    await updateJson(data);
     return data;
   }
 
   /// Converts the response to a json string
-  String toJsonString() {
+  Future<String> toJsonString() async {
     return json.encode(toJson());
   }
+}
+
+typedef _ComputeCallback<Q, R> = FutureOr<R> Function(Q message); // ignore: avoid_private_typedef_functions
+
+Future<R> _compute<Q, R>(_ComputeCallback<Q, R> callback, Q message) async {
+  final resultPort = ReceivePort();
+  final errorPort = ReceivePort();
+  final isolate = await Isolate.spawn<_IsolateConfiguration<Q, FutureOr<R>>>(
+    _spawn,
+    _IsolateConfiguration<Q, FutureOr<R>>(
+      callback,
+      message,
+      resultPort.sendPort,
+    ),
+    errorsAreFatal: true,
+    onExit: resultPort.sendPort,
+    onError: errorPort.sendPort,
+  );
+  final result = Completer<R>();
+  errorPort.listen((errorData) {
+    assert(errorData is List<dynamic>);
+    assert(errorData.length == 2);
+    final exception = Exception(errorData[0]);
+    final stack = StackTrace.fromString(errorData[1]);
+    if (result.isCompleted) {
+      Zone.current.handleUncaughtError(exception, stack);
+    } else {
+      result.completeError(exception, stack);
+    }
+  });
+  resultPort.listen((resultData) {
+    assert(resultData == null || resultData is R);
+    if (!result.isCompleted) {
+      result.complete(resultData);
+    }
+  });
+  await result.future;
+  resultPort.close();
+  errorPort.close();
+  isolate.kill();
+  return result.future;
+}
+
+class _IsolateConfiguration<Q, R> {
+  const _IsolateConfiguration(
+    this.callback,
+    this.message,
+    this.resultPort,
+  );
+
+  final _ComputeCallback<Q, R> callback;
+  final Q message;
+  final SendPort resultPort;
+
+  R apply() => callback(message);
+}
+
+Future<void> _spawn<Q, R>(_IsolateConfiguration<Q, FutureOr<R>> configuration) async {
+  final result = await configuration.apply();
+  configuration.resultPort.send(result);
 }
