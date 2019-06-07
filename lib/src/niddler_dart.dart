@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:uuid/uuid.dart';
 
@@ -190,6 +191,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   final HttpClientRequest _delegate;
   final Niddler _niddler;
   final NiddlerRequest _request;
+  List<List<int>> requestBodyBytes;
 
   @override
   bool get bufferOutput => _delegate.bufferOutput;
@@ -232,7 +234,9 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   @override
   void add(List<int> data) {
-    _request.appendBodyBytes(data);
+    requestBodyBytes ??= List<List<int>>();
+    requestBodyBytes.add(data);
+
     _delegate.add(data);
   }
 
@@ -249,7 +253,16 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   @override
   Future<HttpClientResponse> close() {
     headers.forEach((key, value) => _request.headers[key] = value);
-    _niddler.logRequest(_request);
+
+    if (requestBodyBytes != null && requestBodyBytes.isNotEmpty) {
+      base64Body(requestBodyBytes).then((byteString) {
+        _request.body = byteString;
+        _niddler.logRequest(_request);
+      });
+    } else {
+      _niddler.logRequest(_request);
+    }
+
     final connectionHeader = _request.headers['connection'];
     if (connectionHeader != null && connectionHeader.firstWhere((element) => element.toLowerCase() == 'upgrade') != null) return _delegate.close();
 
@@ -271,20 +284,26 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       final waitedList = tracer.elapsedMicroseconds;
       tracer.reset();
 
-      bodyBytes.forEach(niddlerResponse.appendBodyBytes);
-      final copyBody = tracer.elapsedMicroseconds;
-      tracer.reset();
-
-      _niddler.logResponse(niddlerResponse);
-      final logResponse = tracer.elapsedMicroseconds;
-      tracer.stop();
+      if (bodyBytes != null && bodyBytes.isNotEmpty) {
+        // ignore: unawaited_futures
+        base64Body(bodyBytes).then((byteString) {
+          niddlerResponse.body = byteString;
+          tracer.reset();
+          _niddler.logResponse(niddlerResponse);
+          final logResponse = tracer.elapsedMicroseconds;
+          tracer.stop();
+          print('Time for response logging: $logResponse');
+        });
+      } else {
+        _niddler.logResponse(niddlerResponse);
+        final logResponse = tracer.elapsedMicroseconds;
+        tracer.stop();
+        print('Time for response logging: $logResponse');
+      }
 
       print('Time for header gathering: $headerGather');
       print('Time for response creation: $buildResponse');
       print('Time for data waiting: $waitedList');
-      print('Time for body copy: $copyBody');
-      print('Time for response logging: $logResponse');
-      print('Total time: ${headerGather + buildResponse + waitedList + copyBody + logResponse}');
 
       return _NiddlerHttpClientResponse(response, bodyBytes);
     });
@@ -488,4 +507,53 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
 
   @override
   Stream<List<int>> where(bool Function(List<int> event) test) => _stream.where(test);
+}
+
+class _IsolateData {
+  final List<List<int>> body;
+  final SendPort dataPort;
+
+  _IsolateData(this.body, this.dataPort);
+}
+
+void _encodeBase64(_IsolateData body) {
+  final bodyBytes = List<int>();
+  body.body.forEach(bodyBytes.addAll);
+  final result = const Base64Codec.urlSafe().encode(bodyBytes);
+  body.dataPort.send(result);
+}
+
+Future<String> base64Body(List<List<int>> bytes) async {
+  final resultPort = ReceivePort();
+  final errorPort = ReceivePort();
+  final isolate = await Isolate.spawn(
+    _encodeBase64,
+    _IsolateData(bytes, resultPort.sendPort),
+    errorsAreFatal: true,
+    onExit: resultPort.sendPort,
+    onError: errorPort.sendPort,
+  );
+  final result = Completer<String>();
+  errorPort.listen((errorData) {
+    assert(errorData is List<dynamic>);
+    assert(errorData.length == 2);
+    final exception = Exception(errorData[0]);
+    final stack = StackTrace.fromString(errorData[1]);
+    if (result.isCompleted) {
+      Zone.current.handleUncaughtError(exception, stack);
+    } else {
+      result.completeError(exception, stack);
+    }
+  });
+  resultPort.listen((resultData) {
+    assert(resultData == null || resultData is String);
+    if (!result.isCompleted) {
+      result.complete(resultData);
+    }
+  });
+  await result.future;
+  resultPort.close();
+  errorPort.close();
+  isolate.kill();
+  return result.future;
 }
