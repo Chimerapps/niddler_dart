@@ -271,7 +271,6 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
         return _NiddlerHttpClientResponse(response, bodyBytes);
       });
-
     });
   }
 
