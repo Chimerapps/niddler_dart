@@ -11,7 +11,8 @@ import 'niddler_message_cache.dart';
 import 'niddler_server.dart';
 import 'niddler_server_announcement_manager.dart';
 
-typedef NiddlerDebugPrintCallback = void Function(String message, {int wrapWidth});
+typedef NiddlerDebugPrintCallback = void Function(String message,
+    {int wrapWidth});
 
 NiddlerDebugPrintCallback niddlerDebugPrint = _niddlerDartDebugPrint;
 
@@ -24,8 +25,10 @@ _niddlerDartDebugPrint(String message, {int wrapWidth}) {
 class Niddler {
   final _NiddlerImplementation _implementation;
 
-  Niddler._(int maxCacheSize, int port, String password, String bundleId, NiddlerServerInfo serverInfo)
-      : _implementation = _NiddlerImplementation(maxCacheSize, port, password, bundleId, serverInfo);
+  Niddler._(int maxCacheSize, int port, String password, String bundleId,
+      NiddlerServerInfo serverInfo)
+      : _implementation = _NiddlerImplementation(
+            maxCacheSize, port, password, bundleId, serverInfo);
 
   /// Supply a new request to niddler
   void logRequest(NiddlerRequest request) {
@@ -104,11 +107,13 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   bool _started = false;
   NiddlerServerAnnouncementManager _announcementManager;
 
-  _NiddlerImplementation(int maxCacheSize, [int port = 0, String password, String bundleId, this._serverInfo])
+  _NiddlerImplementation(int maxCacheSize,
+      [int port = 0, String password, String bundleId, this._serverInfo])
       : _messagesCache = NiddlerMessageCache(maxCacheSize),
         _server = NiddlerServer(port, password, bundleId) {
     _server.connectionListener = this;
-    _announcementManager = NiddlerServerAnnouncementManager(bundleId, (_serverInfo == null) ? null : _serverInfo.icon, _server);
+    _announcementManager = NiddlerServerAnnouncementManager(
+        bundleId, (_serverInfo == null) ? null : _serverInfo.icon, _server);
   }
 
   void send(String message) {
@@ -143,7 +148,12 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   @override
   Future<void> onNewConnection(NiddlerConnection connection) async {
     if (_serverInfo != null) {
-      final data = {'type': 'serverInfo', 'serverName': _serverInfo.name, 'serverDescription': _serverInfo.description, 'icon': _serverInfo.icon};
+      final data = {
+        'type': 'serverInfo',
+        'serverName': _serverInfo.name,
+        'serverDescription': _serverInfo.description,
+        'icon': _serverInfo.icon
+      };
       connection.send(jsonEncode(data));
     }
     if (_blacklist.isNotEmpty && protocolVersion > 3) {
@@ -155,8 +165,14 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   }
 
   String _buildBlacklistMessage() {
-    final Map<String, dynamic> data = {'type': 'staticBlacklist', 'id': '<dart>', 'name': '<dart>'}; // ignore: omit_local_variable_types
-    data['entries'] = _blacklist.map((regex) => {'pattern': regex.pattern, 'enabled': true}).toList();
+    final Map<String, dynamic> data = {
+      'type': 'staticBlacklist',
+      'id': '<dart>',
+      'name': '<dart>'
+    }; // ignore: omit_local_variable_types
+    data['entries'] = _blacklist
+        .map((regex) => {'pattern': regex.pattern, 'enabled': true})
+        .toList();
     return jsonEncode(data);
   }
 }

@@ -22,7 +22,8 @@ abstract class NiddlerMessageBase {
   String body;
 
   /// Constructor
-  NiddlerMessageBase(this.messageId, this.requestId, this.timeStamp, this.headers);
+  NiddlerMessageBase(
+      this.messageId, this.requestId, this.timeStamp, this.headers);
 
   /// Updates the given (json) data with the values stored in this instance
   void updateJson(Map<String, dynamic> jsonData) {
@@ -45,7 +46,8 @@ class NiddlerRequest extends NiddlerMessageBase {
   final String method;
 
   /// Constructor
-  NiddlerRequest(this.url, this.method, String messageId, String requestId, int timeStamp, Map<String, List<String>> headers)
+  NiddlerRequest(this.url, this.method, String messageId, String requestId,
+      int timeStamp, Map<String, List<String>> headers)
       : super(messageId, requestId, timeStamp, headers);
 
   /// Converts this request to a json object
@@ -91,8 +93,19 @@ class NiddlerResponse extends NiddlerMessageBase {
   final int waitTime;
 
   /// Constructor
-  NiddlerResponse(this.statusCode, this.statusLine, this.httpVersion, this.actualNetworkRequest, this.actualNetworkResponse, this.writeTime, this.readTime,
-      this.waitTime, String messageId, String requestId, int timeStamp, Map<String, List<String>> headers)
+  NiddlerResponse(
+      this.statusCode,
+      this.statusLine,
+      this.httpVersion,
+      this.actualNetworkRequest,
+      this.actualNetworkResponse,
+      this.writeTime,
+      this.readTime,
+      this.waitTime,
+      String messageId,
+      String requestId,
+      int timeStamp,
+      Map<String, List<String>> headers)
       : super(messageId, requestId, timeStamp, headers);
 
   /// Converts the response to a json object
@@ -107,8 +120,10 @@ class NiddlerResponse extends NiddlerMessageBase {
     data['httpVersion'] = httpVersion;
     data['statusLine'] = statusLine;
 
-    if (actualNetworkRequest != null) data['networkRequest'] = actualNetworkRequest.toJson();
-    if (actualNetworkResponse != null) data['networkReply'] = actualNetworkResponse.toJson();
+    if (actualNetworkRequest != null)
+      data['networkRequest'] = actualNetworkRequest.toJson();
+    if (actualNetworkResponse != null)
+      data['networkReply'] = actualNetworkResponse.toJson();
     updateJson(data);
     return data;
   }

@@ -58,7 +58,10 @@ class NiddlerServer {
     final connection = NiddlerConnection(socket, connectionListener);
     _lock.synchronized(() async {
       _connections.add(connection);
-      socket.listen(connection.onMessage, onDone: () => _onSocketClosed(connection), onError: (_) => _onSocketClosed(connection), cancelOnError: true);
+      socket.listen(connection.onMessage,
+          onDone: () => _onSocketClosed(connection),
+          onError: (_) => _onSocketClosed(connection),
+          cancelOnError: true);
     });
 
     if (_password != null && _bundleId != null) {
@@ -91,7 +94,11 @@ class NiddlerConnection {
     final authRequest = _generateAuthRequest();
     _currentAuthRequestData = authRequest;
     _currentPassword = password;
-    final messageData = {'type': 'authRequest', 'hash': authRequest, 'package': bundleId};
+    final messageData = {
+      'type': 'authRequest',
+      'hash': authRequest,
+      'package': bundleId
+    };
     _socket.add(json.encode(messageData));
   }
 
@@ -125,7 +132,8 @@ class NiddlerConnection {
       return;
     }
     final shaDigest = SHA512Digest();
-    final base64Data = base64Encode(shaDigest.process(utf8.encode(_currentAuthRequestData + _currentPassword)));
+    final base64Data = base64Encode(shaDigest
+        .process(utf8.encode(_currentAuthRequestData + _currentPassword)));
     if (hashKey == base64Data) {
       onAuthSuccess();
     } else {
