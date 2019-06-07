@@ -1,3 +1,7 @@
+## 0.1.3
+
+- Use isolates to greatly reduce main event locking
+
 ## 0.1.2
 
 - Added support for blacklisting urls

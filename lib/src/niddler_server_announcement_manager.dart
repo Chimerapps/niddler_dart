@@ -47,7 +47,8 @@ class NiddlerServerAnnouncementManager {
     Future.doWhile(() async {
       final streamer = StreamController();
       try {
-        final serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, _ANNOUNCEMENT_SOCKET_PORT)
+        final serverSocket = await ServerSocket.bind(
+            InternetAddress.anyIPv4, _ANNOUNCEMENT_SOCKET_PORT)
           ..listen((socket) {
             _onSocket(socket, _slaves);
           }, onError: (e) async {
@@ -125,7 +126,8 @@ class NiddlerServerAnnouncementManager {
     }
   }
 
-  Future<List<int>> _handleQuery(Stream<List<int>> socket, List<_Slave> slaves) async {
+  Future<List<int>> _handleQuery(
+      Stream<List<int>> socket, List<_Slave> slaves) async {
     final responses = List<Map<String, dynamic>>();
 
     final responseData = Map<String, dynamic>();
@@ -148,7 +150,8 @@ class NiddlerServerAnnouncementManager {
     return utf8.encode(json.encode(responses));
   }
 
-  static Future<void> _handleAnnounce(Stream<List<int>> socket, Future done, List<int> initialData, List<_Slave> slaves) async {
+  static Future<void> _handleAnnounce(Stream<List<int>> socket, Future done,
+      List<int> initialData, List<_Slave> slaves) async {
     final allDataBlobs = await socket.toList();
     final allData = List<int>();
     initialData.removeAt(0);
@@ -163,7 +166,8 @@ class NiddlerServerAnnouncementManager {
     offset += 4;
     final packageNameLength = byteView.getInt32(offset);
     offset += 4;
-    final packageName = utf8.decode(byteBuffer.asInt8List(offset, packageNameLength));
+    final packageName =
+        utf8.decode(byteBuffer.asInt8List(offset, packageNameLength));
     offset += packageNameLength;
     final port = byteView.getInt32(offset);
     offset += 4;
@@ -190,7 +194,8 @@ class NiddlerServerAnnouncementManager {
   }
 
   Future<void> _runSlave() async {
-    final slaveSocket = await Socket.connect(InternetAddress.loopbackIPv4, _ANNOUNCEMENT_SOCKET_PORT);
+    final slaveSocket = await Socket.connect(
+        InternetAddress.loopbackIPv4, _ANNOUNCEMENT_SOCKET_PORT);
     final doContinue = await lock.synchronized(() async {
       if (_running) {
         _slaveSocket = slaveSocket;
@@ -206,7 +211,8 @@ class NiddlerServerAnnouncementManager {
     final iconBytes = _icon != null ? utf8.encode(_icon) : null;
     final iconBytesLength = iconBytes != null ? iconBytes.length : 0;
     //Command + version + packageName length + packageName + port + pid + protocolVersion + iconLength + iconBytes
-    final length = 1 + 4 + 4 + packageNameBytes.length + 4 + 4 + 4 + 4 + iconBytesLength;
+    final length =
+        1 + 4 + 4 + packageNameBytes.length + 4 + 4 + 4 + 4 + iconBytesLength;
 
     final data = Int8List(length);
     final bytes = data.buffer;
@@ -247,5 +253,6 @@ class _Slave {
   final int protocolVersion;
   final String icon;
 
-  _Slave(this.socket, this.packageName, this.port, this.pid, this.protocolVersion, this.icon);
+  _Slave(this.socket, this.packageName, this.port, this.pid,
+      this.protocolVersion, this.icon);
 }
