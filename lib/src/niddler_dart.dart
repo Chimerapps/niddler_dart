@@ -6,7 +6,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:mirrors';
 
 import 'package:uuid/uuid.dart';
 
@@ -350,7 +349,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   @override
   noSuchMethod(Invocation invocation) {
-    return reflect(_delegate).delegate(invocation);
+    return super.noSuchMethod(invocation);
   }
 }
 
@@ -551,8 +550,11 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
       _stream.where(test);
 
   @override
+  HttpClientResponseCompressionState get compressionState => null;
+
+  @override
   noSuchMethod(Invocation invocation) {
-    return reflect(_delegate).delegate(invocation);
+    return super.noSuchMethod(invocation);
   }
 }
 
