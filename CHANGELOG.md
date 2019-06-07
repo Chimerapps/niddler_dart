@@ -1,3 +1,7 @@
+## 0.1.5
+
+- Revert dart compatibility change. Restrict running to dart < 2.3.2 for now
+
 ## 0.1.4
 
 - Support newer versions of dart by implementing noSuchMethod

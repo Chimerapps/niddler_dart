@@ -346,11 +346,6 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   @override
   void writeln([Object obj = '']) => _delegate.writeln(obj);
-
-  @override
-  noSuchMethod(Invocation invocation) {
-    return super.noSuchMethod(invocation);
-  }
 }
 
 class _NiddlerHttpClientResponse implements HttpClientResponse {
@@ -548,14 +543,6 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
   @override
   Stream<List<int>> where(bool Function(List<int> event) test) =>
       _stream.where(test);
-
-  @override
-  HttpClientResponseCompressionState get compressionState => null;
-
-  @override
-  noSuchMethod(Invocation invocation) {
-    return super.noSuchMethod(invocation);
-  }
 }
 
 class _IsolateData {
