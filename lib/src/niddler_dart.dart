@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:mirrors';
 
 import 'package:uuid/uuid.dart';
 
@@ -346,6 +347,11 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   @override
   void writeln([Object obj = '']) => _delegate.writeln(obj);
+
+  @override
+  noSuchMethod(Invocation invocation) {
+    return reflect(_delegate).delegate(invocation);
+  }
 }
 
 class _NiddlerHttpClientResponse implements HttpClientResponse {
@@ -543,6 +549,11 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
   @override
   Stream<List<int>> where(bool Function(List<int> event) test) =>
       _stream.where(test);
+
+  @override
+  noSuchMethod(Invocation invocation) {
+    return reflect(_delegate).delegate(invocation);
+  }
 }
 
 class _IsolateData {

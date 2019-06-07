@@ -1,3 +1,7 @@
+## 0.1.4
+
+- Support newer versions of dart by implementing noSuchMethod
+
 ## 0.1.3
 
 - Use isolates to greatly reduce main event locking

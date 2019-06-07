@@ -61,6 +61,7 @@ class NiddlerRequest extends NiddlerMessageBase {
   }
 
   /// Converts this request to a json string
+  @override
   String toJsonString() {
     return json.encode(toJson());
   }
@@ -120,15 +121,18 @@ class NiddlerResponse extends NiddlerMessageBase {
     data['httpVersion'] = httpVersion;
     data['statusLine'] = statusLine;
 
-    if (actualNetworkRequest != null)
+    if (actualNetworkRequest != null) {
       data['networkRequest'] = actualNetworkRequest.toJson();
-    if (actualNetworkResponse != null)
+    }
+    if (actualNetworkResponse != null) {
       data['networkReply'] = actualNetworkResponse.toJson();
+    }
     updateJson(data);
     return data;
   }
 
   /// Converts the response to a json string
+  @override
   String toJsonString() {
     return json.encode(toJson());
   }
