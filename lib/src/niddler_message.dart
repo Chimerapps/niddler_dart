@@ -32,6 +32,8 @@ abstract class NiddlerMessageBase {
     jsonData['headers'] = headers;
     if (body != null) jsonData['body'] = body;
   }
+
+  String toJsonString();
 }
 
 /// Implementation class for representing niddler requests (outgoing). This is not restricted to strictly HTTP requests

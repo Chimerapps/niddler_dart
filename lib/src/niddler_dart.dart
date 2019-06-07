@@ -254,14 +254,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   Future<HttpClientResponse> close() {
     headers.forEach((key, value) => _request.headers[key] = value);
 
-    if (requestBodyBytes != null && requestBodyBytes.isNotEmpty) {
-      _base64Body(requestBodyBytes).then((byteString) {
-        _request.body = byteString;
-        _niddler.logRequest(_request);
-      });
-    } else {
-      _niddler.logRequest(_request);
-    }
+    _encodeBody(_request, requestBodyBytes).then(_niddler.logRequestJson);
 
     final connectionHeader = _request.headers['connection'];
     if (connectionHeader != null && connectionHeader.firstWhere((element) => element.toLowerCase() == 'upgrade') != null) return _delegate.close();
@@ -284,22 +277,14 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       final waitedList = tracer.elapsedMicroseconds;
       tracer.reset();
 
-      if (bodyBytes != null && bodyBytes.isNotEmpty) {
-        // ignore: unawaited_futures
-        _base64Body(bodyBytes).then((byteString) {
-          niddlerResponse.body = byteString;
-          tracer.reset();
-          _niddler.logResponse(niddlerResponse);
-          final logResponse = tracer.elapsedMicroseconds;
-          tracer.stop();
-          print('Time for response logging: $logResponse');
-        });
-      } else {
-        _niddler.logResponse(niddlerResponse);
+      // ignore: unawaited_futures
+      _encodeBody(niddlerResponse, bodyBytes).then((json) {
+        tracer.reset();
+        _niddler.logResponseJson(json);
         final logResponse = tracer.elapsedMicroseconds;
         tracer.stop();
         print('Time for response logging: $logResponse');
-      }
+      });
 
       print('Time for header gathering: $headerGather');
       print('Time for response creation: $buildResponse');
@@ -510,25 +495,28 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
 }
 
 class _IsolateData {
+  final NiddlerMessageBase message;
   final List<List<int>> body;
   final SendPort dataPort;
 
-  _IsolateData(this.body, this.dataPort);
+  _IsolateData(this.message, this.body, this.dataPort);
 }
 
-void _encodeBase64(_IsolateData body) {
-  final bodyBytes = List<int>();
-  body.body.forEach(bodyBytes.addAll);
-  final result = const Base64Codec.urlSafe().encode(bodyBytes);
-  body.dataPort.send(result);
+void _encodeBodyJson(_IsolateData body) {
+  if (body.body != null && body.body.isNotEmpty) {
+    final bodyBytes = List<int>();
+    body.body.forEach(bodyBytes.addAll);
+    body.message.body = const Base64Codec.urlSafe().encode(bodyBytes);
+  }
+  body.dataPort.send(body.message.toJsonString());
 }
 
-Future<String> _base64Body(List<List<int>> bytes) async {
+Future<String> _encodeBody(NiddlerMessageBase message, List<List<int>> bytes) async {
   final resultPort = ReceivePort();
   final errorPort = ReceivePort();
   final isolate = await Isolate.spawn(
-    _encodeBase64,
-    _IsolateData(bytes, resultPort.sendPort),
+    _encodeBodyJson,
+    _IsolateData(message, bytes, resultPort.sendPort),
     errorsAreFatal: true,
     onExit: resultPort.sendPort,
     onError: errorPort.sendPort,

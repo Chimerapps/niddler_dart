@@ -29,12 +29,22 @@ class Niddler {
 
   /// Supply a new request to niddler
   void logRequest(NiddlerRequest request) {
-    _jsonBody(request).then(_implementation.send);
+    _jsonBody(request).then(logRequestJson);
+  }
+
+  /// Supply a new request to niddler, already transformed into json
+  void logRequestJson(String request) {
+    _implementation.send(request);
   }
 
   /// Supply a new response to niddler
   void logResponse(NiddlerResponse response) {
-    _jsonBody(response).then(_implementation.send);
+    _jsonBody(response).then(logResponseJson);
+  }
+
+  /// Supply a new response to niddler, already transformed into json
+  void logResponseJson(String response) {
+    _implementation.send(response);
   }
 
   /// Adds the URL pattern to the blacklist. Items in the blacklist will not be reported or retained in the memory cache. Matching happens on the request URL
