@@ -254,14 +254,37 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     if (connectionHeader != null && connectionHeader.firstWhere((element) => element.toLowerCase() == 'upgrade') != null) return _delegate.close();
 
     return _delegate.close().then((response) async {
+      final tracer = Stopwatch()..start();
+
       final responseHeaders = Map<String, List<String>>();
       response.headers.forEach((key, value) => responseHeaders[key] = value);
+      final headerGather = tracer.elapsedMicroseconds;
+      tracer.reset();
+
       final niddlerResponse = NiddlerResponse(response.statusCode, response.reasonPhrase, null, null, null, -1, -1, -1, Uuid().v4(), _request.requestId,
           DateTime.now().millisecondsSinceEpoch, responseHeaders);
 
+      final buildResponse = tracer.elapsedMicroseconds;
+      tracer.reset();
+
       final bodyBytes = await response.toList();
+      final waitedList = tracer.elapsedMicroseconds;
+      tracer.reset();
+
       bodyBytes.forEach(niddlerResponse.appendBodyBytes);
+      final copyBody = tracer.elapsedMicroseconds;
+      tracer.reset();
+
       _niddler.logResponse(niddlerResponse);
+      final logResponse = tracer.elapsedMicroseconds;
+      tracer.stop();
+
+      print('Time for header gathering: $headerGather');
+      print('Time for response creation: $buildResponse');
+      print('Time for data waiting: $waitedList');
+      print('Time for body copy: $copyBody');
+      print('Time for response logging: $logResponse');
+      print('Total time: ${headerGather + buildResponse + waitedList + copyBody + logResponse}');
 
       return _NiddlerHttpClientResponse(response, bodyBytes);
     });
