@@ -59,7 +59,7 @@ class NiddlerRequest extends NiddlerMessageBase {
       : super(messageId, requestId, timeStamp, headers);
 
   /// Converts this request to a json object
-  dynamic toJson() async {
+  Future<dynamic> toJson() async {
     final data = Map<String, dynamic>();
     data['type'] = 'request';
     data['method'] = method;
@@ -70,7 +70,7 @@ class NiddlerRequest extends NiddlerMessageBase {
 
   /// Converts this request to a json string
   Future<String> toJsonString() async {
-    return json.encode(toJson());
+    return json.encode(await toJson());
   }
 }
 
@@ -106,7 +106,7 @@ class NiddlerResponse extends NiddlerMessageBase {
       : super(messageId, requestId, timeStamp, headers);
 
   /// Converts the response to a json object
-  dynamic toJson() async {
+  Future<dynamic> toJson() async {
     final data = Map<String, dynamic>();
 
     data['type'] = 'response';
@@ -125,7 +125,7 @@ class NiddlerResponse extends NiddlerMessageBase {
 
   /// Converts the response to a json string
   Future<String> toJsonString() async {
-    return json.encode(toJson());
+    return json.encode(await toJson());
   }
 }
 
