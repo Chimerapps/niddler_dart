@@ -543,6 +543,10 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
   @override
   Stream<List<int>> where(bool Function(List<int> event) test) =>
       _stream.where(test);
+
+  @override
+  HttpClientResponseCompressionState get compressionState =>
+      _delegate.compressionState;
 }
 
 class _IsolateData {
