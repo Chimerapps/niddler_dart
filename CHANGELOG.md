@@ -1,7 +1,3 @@
-## 0.2.0
-
-- Compatible with dart 2.3.2 and up
-
 ## 0.1.5
 
 - Revert dart compatibility change. Restrict running to dart < 2.3.2 for now
