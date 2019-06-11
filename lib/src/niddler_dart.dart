@@ -557,7 +557,9 @@ void _encodeBodyJson(_IsolateData body) {
   if (body.body != null && body.body.isNotEmpty) {
     final bodyBytes = List<int>();
     body.body.forEach(bodyBytes.addAll);
-    body.message.body = const Base64Codec.urlSafe().encode(bodyBytes);
+    if (bodyBytes.isNotEmpty) {
+      body.message.body = const Base64Codec.urlSafe().encode(bodyBytes);
+    }
   }
   body.dataPort.send(body.message.toJsonString());
 }
