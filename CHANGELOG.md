@@ -1,3 +1,7 @@
+## 0.2.1
+
+- Do not send 0 byte bodies
+
 ## 0.1.5
 
 - Revert dart compatibility change. Restrict running to dart < 2.3.2 for now
