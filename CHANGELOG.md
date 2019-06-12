@@ -1,3 +1,7 @@
+## 0.3.0-master
+
+- Support dart 2.3.2 and up
+
 ## 0.2.1
 
 - Do not send 0 byte bodies
