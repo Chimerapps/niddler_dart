@@ -17,6 +17,8 @@ Future<void> main() async {
 
   final response = await http.post('http://httpbin.org/post', body: json.encode(value), headers: {'content-type': 'application/json'});
   final response2 = await http.get('http://httpbin.org/get', headers: {'content-type': 'application/json'});
+  await http.get('http://placekitten.com/200/300');
+
   print('Post body: ${response.body}');
   print('Get body (blacklisted): ${response2.body}');
 
