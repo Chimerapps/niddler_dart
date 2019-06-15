@@ -252,7 +252,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       : _request = NiddlerRequest(
             _delegate.uri.toString(),
             _delegate.method,
-            Chain.current().terse.traces.map((trace) => trace.toString()).toList(),
+            Chain.current().traces.map((trace) => trace.toString()).toList(),
             Uuid().v4(),
             requestId,
             DateTime.now().millisecondsSinceEpoch,
