@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'package:stack_trace/stack_trace.dart';
 
 import 'package:uuid/uuid.dart';
 
@@ -251,6 +252,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       : _request = NiddlerRequest(
             _delegate.uri.toString(),
             _delegate.method,
+            Chain.current().terse.traces.map((trace) => trace.toString()).toList(),
             Uuid().v4(),
             requestId,
             DateTime.now().millisecondsSinceEpoch,

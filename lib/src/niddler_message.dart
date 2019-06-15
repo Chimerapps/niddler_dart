@@ -45,8 +45,10 @@ class NiddlerRequest extends NiddlerMessageBase {
   /// The method of this request, can be a HTTP method or something else that describes your request (eg in websockets)
   final String method;
 
+  final List<String> stackTraces;
+
   /// Constructor
-  NiddlerRequest(this.url, this.method, String messageId, String requestId,
+  NiddlerRequest(this.url, this.method, this.stackTraces, String messageId, String requestId,
       int timeStamp, Map<String, List<String>> headers)
       : super(messageId, requestId, timeStamp, headers);
 
@@ -56,6 +58,10 @@ class NiddlerRequest extends NiddlerMessageBase {
     data['type'] = 'request';
     data['method'] = method;
     data['url'] = url;
+    if (stackTraces != null && stackTraces.isNotEmpty) {
+      print(stackTraces);
+      data['trace'] = stackTraces;
+    }
     updateJson(data);
     return data;
   }
