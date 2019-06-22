@@ -1,3 +1,7 @@
+## 0.3.0-master+1
+
+- Fix for dart pub
+
 ## 0.3.0-master
 
 - Support dart 2.3.2 and up
