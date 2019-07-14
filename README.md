@@ -6,6 +6,8 @@ Niddler network inspector for dart and flutter
 
 A simple usage example:
 
+For a more complete example, see `example/main.dart`.
+
 ```dart
 import 'package:niddler_dart/niddler_dart.dart';
 

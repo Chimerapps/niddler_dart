@@ -1,3 +1,8 @@
+## 0.4.0
+
+- Main release now tracks dart &gt; 2.3.2
+- Added extra examples in main.dart
+
 ## 0.3.1-master
 
 - Fix for dart pub
