@@ -20,7 +20,7 @@ final niddlerBuilder = NiddlerBuilder()
 
   final niddler = niddlerBuilder.build();
   await niddler.start();
-  NiddlerInjector.install(niddler);
+  niddler.install();
   
   //Make http requests ...
   

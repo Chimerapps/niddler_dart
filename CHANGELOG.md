@@ -1,3 +1,10 @@
+## 0.5.0
+
+- Added support for flutter web by providing a no-op niddler implementation
+- Small bugfix that could cause the announcement manager to crash
+- Breaking change:
+`NiddlerInjector.install(niddler);` has been replaced with `niddler.install();`
+
 ## 0.4.0
 
 - Main release now tracks dart &gt; 2.3.2

@@ -9,21 +9,13 @@ import 'dart:isolate';
 
 import 'package:uuid/uuid.dart';
 
-import 'niddler.dart';
-import 'niddler_message.dart';
+import 'package:niddler_dart/src/niddler_generic.dart';
+import 'package:niddler_dart/src/niddler_message.dart';
 
-/// Helper which installs niddler as HTTP interceptor for the current process. Works by setting itself as the global [HttpOverrides]
-class NiddlerInjector {
-  /// Install niddler as the [HttpOverrides] global override
-  static void install(Niddler niddler) {
-    HttpOverrides.global = _NiddlerHttpOverrides(niddler);
-  }
-}
-
-class _NiddlerHttpOverrides extends HttpOverrides {
+class NiddlerHttpOverrides extends HttpOverrides {
   final Niddler _niddler;
 
-  _NiddlerHttpOverrides(this._niddler);
+  NiddlerHttpOverrides(this._niddler);
 
   @override
   HttpClient createHttpClient(SecurityContext context) {
@@ -459,8 +451,8 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
       _stream.forEach(action);
 
   @override
-  // ignore: avoid_annotating_with_dynamic
   Stream<List<int>> handleError(Function onError,
+          // ignore: avoid_annotating_with_dynamic
           {bool Function(dynamic error) test}) =>
       _stream.handleError(onError, test: test);
 

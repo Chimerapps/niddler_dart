@@ -9,8 +9,8 @@ import 'dart:typed_data';
 
 import 'package:synchronized/synchronized.dart';
 
-import 'niddler.dart';
-import 'niddler_server.dart';
+import 'package:niddler_dart/src/platform/io/niddler_io.dart';
+import 'package:niddler_dart/src/platform/io/niddler_server.dart';
 
 const int _ANNOUNCEMENT_SOCKET_PORT = 6394;
 const int _COMMAND_REQUEST_QUERY = 0x01;
@@ -153,9 +153,8 @@ class NiddlerServerAnnouncementManager {
   static Future<void> _handleAnnounce(Stream<List<int>> socket, Future done,
       List<int> initialData, List<_Slave> slaves) async {
     final allDataBlobs = await socket.toList();
-    final allData = List<int>();
-    initialData.removeAt(0);
-    allData.addAll(initialData);
+    final allData = List<int>()
+      ..addAll(initialData.getRange(1, initialData.length));
     allDataBlobs.forEach(allData.addAll);
 
     final byteBuffer = Int8List.fromList(allData).buffer;
