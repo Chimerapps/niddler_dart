@@ -153,9 +153,8 @@ class NiddlerServerAnnouncementManager {
   static Future<void> _handleAnnounce(Stream<List<int>> socket, Future done,
       List<int> initialData, List<_Slave> slaves) async {
     final allDataBlobs = await socket.toList();
-    final allData = List<int>();
-    initialData.removeAt(0);
-    allData.addAll(initialData);
+    final allData = List<int>()
+      ..addAll(initialData.getRange(1, initialData.length));
     allDataBlobs.forEach(allData.addAll);
 
     final byteBuffer = Int8List.fromList(allData).buffer;
