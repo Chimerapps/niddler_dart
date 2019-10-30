@@ -4,4 +4,6 @@
 
 import '../niddler_generic.dart';
 
-Niddler createNiddler(int maxCacheSize, int port, String password, String bundleId, NiddlerServerInfo serverInfo) => throw UnsupportedError('Not supported');
+Niddler createNiddler(int maxCacheSize, int port, String password,
+        String bundleId, NiddlerServerInfo serverInfo) =>
+    throw UnsupportedError('Not supported');

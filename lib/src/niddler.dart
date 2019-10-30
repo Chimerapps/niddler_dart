@@ -3,7 +3,9 @@
 // an MIT license that can be found in the LICENSE file.
 
 import 'niddler_generic.dart';
-import 'platform/niddler_empty.dart' if (dart.library.html) 'platform/niddler_noop.dart' if (dart.library.io) 'platform/io/niddler_io.dart';
+import 'platform/niddler_empty.dart'
+    if (dart.library.html) 'platform/niddler_noop.dart'
+    if (dart.library.io) 'platform/io/niddler_io.dart';
 
 /// Builder used to create niddler instances
 /// Uses the following defaults:

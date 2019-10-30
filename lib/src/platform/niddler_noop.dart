@@ -6,7 +6,8 @@ import 'package:niddler_dart/src/niddler_message.dart';
 
 import '../niddler_generic.dart';
 
-Niddler createNiddler(int maxCacheSize, int port, String password, String bundleId, NiddlerServerInfo serverInfo) =>
+Niddler createNiddler(int maxCacheSize, int port, String password,
+        String bundleId, NiddlerServerInfo serverInfo) =>
     NiddlerNoop._();
 
 void installNiddler(Niddler niddler) {}
@@ -39,7 +40,5 @@ class NiddlerNoop implements Niddler {
   Future<void> stop() async {}
 
   @override
-  void install() {
-  }
-
+  void install() {}
 }
