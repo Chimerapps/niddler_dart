@@ -13,7 +13,7 @@ Future<void> main() async {
 
   final niddler = niddlerBuilder.build()..addBlacklist(RegExp('.*/get'));
   await niddler.start();
-  NiddlerInjector.install(niddler);
+  niddler.install();
 
   final value = {
     'test': 'data',

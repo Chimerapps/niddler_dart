@@ -9,7 +9,7 @@ import 'dart:typed_data';
 
 import 'package:synchronized/synchronized.dart';
 
-import 'niddler.dart';
+import 'niddler_io.dart';
 import 'niddler_server.dart';
 
 const int _ANNOUNCEMENT_SOCKET_PORT = 6394;

@@ -1,3 +1,7 @@
+## 0.5.0-dev
+
+- Added support for flutter web by providing a no-op niddler implementation
+
 ## 0.4.0
 
 - Main release now tracks dart &gt; 2.3.2
