@@ -9,8 +9,8 @@ import 'dart:isolate';
 
 import 'package:uuid/uuid.dart';
 
-import '../../niddler_generic.dart';
-import '../../niddler_message.dart';
+import 'package:niddler_dart/src/niddler_generic.dart';
+import 'package:niddler_dart/src/niddler_message.dart';
 
 class NiddlerHttpOverrides extends HttpOverrides {
   final Niddler _niddler;

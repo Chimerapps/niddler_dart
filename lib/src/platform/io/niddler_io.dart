@@ -7,12 +7,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
-import '../../niddler_generic.dart';
-import '../../niddler_message.dart';
-import '../../niddler_message_cache.dart';
-import 'niddler_dart.dart';
-import 'niddler_server.dart';
-import 'niddler_server_announcement_manager.dart';
+import 'package:niddler_dart/src/niddler_generic.dart';
+import 'package:niddler_dart/src/niddler_message.dart';
+import 'package:niddler_dart/src/niddler_message_cache.dart';
+import 'package:niddler_dart/src/platform/io/niddler_dart.dart';
+import 'package:niddler_dart/src/platform/io/niddler_server.dart';
+import 'package:niddler_dart/src/platform/io/niddler_server_announcement_manager.dart';
 
 typedef NiddlerDebugPrintCallback = void Function(String message,
     {int wrapWidth});

@@ -9,8 +9,8 @@ import 'dart:typed_data';
 
 import 'package:synchronized/synchronized.dart';
 
-import 'niddler_io.dart';
-import 'niddler_server.dart';
+import 'package:niddler_dart/src/platform/io/niddler_io.dart';
+import 'package:niddler_dart/src/platform/io/niddler_server.dart';
 
 const int _ANNOUNCEMENT_SOCKET_PORT = 6394;
 const int _COMMAND_REQUEST_QUERY = 0x01;

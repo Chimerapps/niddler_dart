@@ -2,7 +2,7 @@
 // All rights reserved. Use of this source code is governed by
 // an MIT license that can be found in the LICENSE file.
 
-import 'niddler_message.dart';
+import 'package:niddler_dart/src/niddler_message.dart';
 
 /// Encapsulates some information about the niddler server instance. This is cosmetic information for the client
 class NiddlerServerInfo {

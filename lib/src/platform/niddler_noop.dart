@@ -4,7 +4,7 @@
 
 import 'package:niddler_dart/src/niddler_message.dart';
 
-import '../niddler_generic.dart';
+import 'package:niddler_dart/src/niddler_generic.dart';
 
 Niddler createNiddler(int maxCacheSize, int port, String password,
         String bundleId, NiddlerServerInfo serverInfo) =>

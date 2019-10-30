@@ -2,10 +2,10 @@
 // All rights reserved. Use of this source code is governed by
 // an MIT license that can be found in the LICENSE file.
 
-import 'niddler_generic.dart';
-import 'platform/niddler_empty.dart'
-    if (dart.library.html) 'platform/niddler_noop.dart'
-    if (dart.library.io) 'platform/io/niddler_io.dart';
+import 'package:niddler_dart/src/niddler_generic.dart';
+import 'package:niddler_dart/src/platform/niddler_empty.dart'
+    if (dart.library.html) 'package:niddler_dart/src/platform/niddler_noop.dart'
+    if (dart.library.io) 'package:niddler_dart/src/platform/io/niddler_io.dart';
 
 /// Builder used to create niddler instances
 /// Uses the following defaults:

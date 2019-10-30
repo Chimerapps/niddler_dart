@@ -9,7 +9,7 @@ import 'dart:math';
 import 'package:pointycastle/digests/sha512.dart';
 import 'package:synchronized/synchronized.dart';
 
-import 'niddler_io.dart';
+import 'package:niddler_dart/src/platform/io/niddler_io.dart';
 
 const _chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
