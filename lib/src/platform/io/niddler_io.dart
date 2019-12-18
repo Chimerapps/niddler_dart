@@ -159,6 +159,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   }
 
   String _buildBlacklistMessage() {
+    // ignore: omit_local_variable_types
     final Map<String, dynamic> data = {
       'type': 'staticBlacklist',
       'id': '<dart>',
