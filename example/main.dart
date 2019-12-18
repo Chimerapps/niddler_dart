@@ -37,9 +37,9 @@ Future<void> main() async {
   print('Post body: ${response.body}');
   print('Get body (blacklisted): ${response2.body}');
 
-  await Future.delayed(Duration(seconds: 100));
+  await Future.delayed(const Duration(seconds: 100));
 
   await niddler.stop();
 
-  await Future.delayed(Duration(seconds: 2));
+  await Future.delayed(const Duration(seconds: 2));
 }

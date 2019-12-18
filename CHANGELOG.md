@@ -1,3 +1,7 @@
+## 0.5.1
+
+- Fixed issue on hot reload (https://github.com/Chimerapps/niddler_dart/issues/4)
+
 ## 0.5.0
 
 - Added support for flutter web by providing a no-op niddler implementation
