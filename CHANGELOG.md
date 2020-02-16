@@ -1,3 +1,7 @@
+## 0.6.0
+
+- Capture request stack traces if so configured
+
 ## 0.5.1
 
 - Fixed issue on hot reload (https://github.com/Chimerapps/niddler_dart/issues/4)
