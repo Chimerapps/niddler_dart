@@ -1,3 +1,27 @@
+## 0.5.1
+
+- Fixed issue on hot reload (https://github.com/Chimerapps/niddler_dart/issues/4)
+
+## 0.5.0
+
+- Added support for flutter web by providing a no-op niddler implementation
+- Small bugfix that could cause the announcement manager to crash
+- Breaking change:
+`NiddlerInjector.install(niddler);` has been replaced with `niddler.install();`
+
+## 0.4.0
+
+- Main release now tracks dart &gt; 2.3.2
+- Added extra examples in main.dart
+
+## 0.3.1-master
+
+- Fix for dart pub
+
+## 0.3.0-master
+
+- Support dart 2.3.2 and up
+
 ## 0.2.1
 
 - Do not send 0 byte bodies

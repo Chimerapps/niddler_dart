@@ -5,5 +5,5 @@
 library niddler_dart;
 
 export 'src/niddler.dart';
-export 'src/niddler_dart.dart';
+export 'src/niddler_generic.dart';
 export 'src/niddler_message.dart';

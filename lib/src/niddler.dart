@@ -2,72 +2,11 @@
 // All rights reserved. Use of this source code is governed by
 // an MIT license that can be found in the LICENSE file.
 
-import 'dart:async';
-import 'dart:convert';
-import 'dart:isolate';
-
-import 'niddler_message.dart';
-import 'niddler_message_cache.dart';
-import 'niddler_server.dart';
-import 'niddler_server_announcement_manager.dart';
-
-typedef NiddlerDebugPrintCallback = void Function(String message, {int wrapWidth});
-
-NiddlerDebugPrintCallback niddlerDebugPrint = _niddlerDartDebugPrint;
-
-_niddlerDartDebugPrint(String message, {int wrapWidth}) {
-  print(message);
-}
-
-/// Heart of the consumer interface of niddler. Use this class to log custom requests and responses and to
-/// start and stop the server
-class Niddler {
-  final _NiddlerImplementation _implementation;
-
-  Niddler._(int maxCacheSize, int port, String password, String bundleId, bool includeStackTrace, NiddlerServerInfo serverInfo)
-      : _implementation = _NiddlerImplementation(maxCacheSize,
-            port: port, password: password, bundleId: bundleId, includeStackTrace: includeStackTrace, serverInfo: serverInfo);
-
-  /// Supply a new request to niddler
-  void logRequest(NiddlerRequest request) {
-    _jsonBody(request).then(logRequestJson);
-  }
-
-  /// Supply a new request to niddler, already transformed into json
-  void logRequestJson(String request) {
-    _implementation.send(request);
-  }
-
-  /// Supply a new response to niddler
-  void logResponse(NiddlerResponse response) {
-    _jsonBody(response).then(logResponseJson);
-  }
-
-  /// Supply a new response to niddler, already transformed into json
-  void logResponseJson(String response) {
-    _implementation.send(response);
-  }
-
-  /// Adds the URL pattern to the blacklist. Items in the blacklist will not be reported or retained in the memory cache. Matching happens on the request URL
-  void addBlacklist(RegExp regex) {
-    _implementation.addBlacklist(regex);
-  }
-
-  /// Checks if the given URL matches the current configured blacklist
-  bool isBlacklisted(String url) {
-    return _implementation.isBlacklisted(url);
-  }
-
-  /// Starts the server
-  Future<bool> start() async {
-    return _implementation.start();
-  }
-
-  /// Stops the server
-  Future<void> stop() async {
-    return _implementation.stop();
-  }
-}
+import 'package:niddler_dart/src/niddler_generic.dart';
+import 'package:niddler_dart/src/platform/niddler_empty.dart'
+    if (dart.library.html) 'package:niddler_dart/src/platform/niddler_noop.dart'
+    if (dart.library.io) 'package:niddler_dart/src/platform/io/niddler_io.dart';
+import 'package:stack_trace/stack_trace.dart';
 
 /// Builder used to create niddler instances
 /// Uses the following defaults:
@@ -84,7 +23,7 @@ class NiddlerBuilder {
   /// The port to run the server on. Set to 0 to allow niddler to pick a free port (default). A log will be printed with the active port
   int port = 0;
 
-  /// The cache size in bytes the internal niddler cache tries to limit itself to
+  /// The cache size in bytes the internal niddler cache tries to limit itself to. Defaults to 1mb
   int maxCacheSize = 1024 * 1024;
 
   /// Some cosmetic information about the server for the client
@@ -93,135 +32,24 @@ class NiddlerBuilder {
   /// Include stack trace of the request
   bool includeStackTrace = false;
 
+  /// Customize stack trace sanitization. Sensible defaults for flutter/dio are set by default by DefaultStackTraceSanitizer
+  StackTraceSanitizer sanitizer = DefaultStackTraceSanitizer();
+
   /// Create the niddler instance
   Niddler build() {
-    return Niddler._(maxCacheSize, port, password, bundleId, includeStackTrace, serverInfo);
+    return createNiddler(maxCacheSize, port, password, bundleId, serverInfo, sanitizer, includeStackTrace: includeStackTrace);
   }
 }
 
-class _NiddlerImplementation implements NiddlerServerConnectionListener {
-  final NiddlerMessageCache _messagesCache;
-  final NiddlerServer _server;
-  final NiddlerServerInfo serverInfo;
-  final List<RegExp> _blacklist = [];
-  final int protocolVersion = 3;
-  final bool includeStackTrace;
-  bool _started = false;
-  NiddlerServerAnnouncementManager _announcementManager;
-
-  _NiddlerImplementation(int maxCacheSize, {int port = 0, String password, String bundleId, this.includeStackTrace, this.serverInfo})
-      : _messagesCache = NiddlerMessageCache(maxCacheSize),
-        _server = NiddlerServer(port, password, bundleId) {
-    _server.connectionListener = this;
-    _announcementManager = NiddlerServerAnnouncementManager(bundleId, (serverInfo == null) ? null : serverInfo.icon, _server);
-  }
-
-  void send(String message) {
-    _messagesCache.put(message);
-    _server.sendToAll(message);
-  }
-
-  Future<bool> start() async {
-    _started = true;
-    await _server.start();
-    await _announcementManager.start();
-    return true;
-  }
-
-  Future<void> stop() async {
-    _started = false;
-    await _announcementManager.stop();
-    await _server.shutdown();
-  }
-
-  void addBlacklist(RegExp item) {
-    _blacklist.add(item);
-    if (_started && protocolVersion > 3) {
-      _server.sendToAll(_buildBlacklistMessage());
-    }
-  }
-
-  bool isBlacklisted(String url) {
-    return _blacklist.any((item) => item.hasMatch(url));
-  }
-
+class DefaultStackTraceSanitizer implements StackTraceSanitizer {
   @override
-  Future<void> onNewConnection(NiddlerConnection connection) async {
-    if (serverInfo != null) {
-      final data = {'type': 'serverInfo', 'serverName': serverInfo.name, 'serverDescription': serverInfo.description, 'icon': serverInfo.icon};
-      connection.send(jsonEncode(data));
-    }
-    if (_blacklist.isNotEmpty && protocolVersion > 3) {
-      connection.send(_buildBlacklistMessage());
-    }
-
-    final allMessages = await _messagesCache.allMessages();
-    allMessages.forEach(connection.send);
+  bool accepts(Frame frame) {
+    return !(frame.library.startsWith('package:niddler_dart') ||
+        frame.library.startsWith('dart:async') ||
+        frame.library.startsWith('package:stack_trace') ||
+        frame.library.startsWith('dart:isolate-patch') ||
+        frame.library.startsWith('package:http') ||
+        frame.library.startsWith('package:flutter') ||
+        frame.library.startsWith('package:dio'));
   }
-
-  String _buildBlacklistMessage() {
-    final Map<String, dynamic> data = {'type': 'staticBlacklist', 'id': '<dart>', 'name': '<dart>'}; // ignore: omit_local_variable_types
-    data['entries'] = _blacklist.map((regex) => {'pattern': regex.pattern, 'enabled': true}).toList();
-    return jsonEncode(data);
-  }
-}
-
-/// Encapsulates some information about the niddler server instance. This is cosmetic information for the client
-class NiddlerServerInfo {
-  /// The name to use for this server
-  final String name;
-
-  /// The description to use for this server
-  final String description;
-
-  /// The icon to use for this server, WIP
-  final String icon;
-
-  NiddlerServerInfo(this.name, this.description, {this.icon});
-}
-
-class _IsolateData {
-  final dynamic body;
-  final SendPort dataPort;
-
-  _IsolateData(this.body, this.dataPort);
-}
-
-void _encodeJson(_IsolateData body) {
-  body.dataPort.send(body.body.toJsonString());
-}
-
-Future<String> _jsonBody(body) async {
-  final resultPort = ReceivePort();
-  final errorPort = ReceivePort();
-  final isolate = await Isolate.spawn(
-    _encodeJson,
-    _IsolateData(body, resultPort.sendPort),
-    errorsAreFatal: true,
-    onExit: resultPort.sendPort,
-    onError: errorPort.sendPort,
-  );
-  final result = Completer<String>();
-  errorPort.listen((errorData) {
-    assert(errorData is List<dynamic>);
-    assert(errorData.length == 2);
-    final exception = Exception(errorData[0]);
-    final stack = StackTrace.fromString(errorData[1]);
-    if (result.isCompleted) {
-      Zone.current.handleUncaughtError(exception, stack);
-    } else {
-      result.completeError(exception, stack);
-    }
-  });
-  resultPort.listen((resultData) {
-    assert(resultData == null || resultData is String);
-    if (!result.isCompleted) {
-      result.complete(resultData);
-    }
-  });
-  await result.future;
-  resultPort.close();
-  errorPort.close();
-  isolate.kill();
-  return result.future;
 }

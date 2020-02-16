@@ -59,7 +59,6 @@ class NiddlerRequest extends NiddlerMessageBase {
     data['method'] = method;
     data['url'] = url;
     if (stackTraces != null && stackTraces.isNotEmpty) {
-      print(stackTraces);
       data['trace'] = stackTraces;
     }
     updateJson(data);

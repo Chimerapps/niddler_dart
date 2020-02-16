@@ -6,6 +6,8 @@ Niddler network inspector for dart and flutter
 
 A simple usage example:
 
+For a more complete example, see `example/main.dart`.
+
 ```dart
 import 'package:niddler_dart/niddler_dart.dart';
 
@@ -18,7 +20,7 @@ final niddlerBuilder = NiddlerBuilder()
 
   final niddler = niddlerBuilder.build();
   await niddler.start();
-  NiddlerInjector.install(niddler);
+  niddler.install();
   
   //Make http requests ...
   

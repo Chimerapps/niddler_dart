@@ -13,7 +13,7 @@ Future<void> main() async {
 
     final niddler = niddlerBuilder.build()..addBlacklist(RegExp('.*/get'));
     await niddler.start();
-    NiddlerInjector.install(niddler);
+    niddler.install();
 
     await executePost1();
     await executeGet();
@@ -29,7 +29,15 @@ Future<void> main() async {
 }
 
 Future<void> executePost1() async {
-  final value = {'test': 'data'};
+  final value = {
+    'test': 'data',
+    'arrayData': [
+      '1',
+      '2',
+      '3',
+      {'nested': 'nestedData'}
+    ]
+  };
   final response = await http.post('http://httpbin.org/post', body: json.encode(value), headers: {'content-type': 'application/json'});
   print('Post body: ${response.body}');
 }
