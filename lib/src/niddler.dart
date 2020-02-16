@@ -52,6 +52,7 @@ class DefaultStackTraceSanitizer implements StackTraceSanitizer {
         frame.library.startsWith('dart:isolate-patch') ||
         frame.library.startsWith('package:http') ||
         frame.library.startsWith('package:flutter') ||
+        frame.library.startsWith('dart:ui') ||
         frame.library.startsWith('package:dio'));
   }
 }
