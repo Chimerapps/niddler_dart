@@ -17,7 +17,8 @@ class NiddlerHttpOverrides extends HttpOverrides {
   final StackTraceSanitizer _sanitizer;
   final bool includeStackTraces;
 
-  NiddlerHttpOverrides(this._niddler, this._sanitizer, {this.includeStackTraces});
+  NiddlerHttpOverrides(this._niddler, this._sanitizer,
+      {this.includeStackTraces});
 
   @override
   HttpClient createHttpClient(SecurityContext context) {
@@ -58,7 +59,8 @@ class _NiddlerHttpClient implements HttpClient {
   int get maxConnectionsPerHost => _delegate.maxConnectionsPerHost;
 
   @override
-  set maxConnectionsPerHost(int value) => _delegate.maxConnectionsPerHost = value;
+  set maxConnectionsPerHost(int value) =>
+      _delegate.maxConnectionsPerHost = value;
 
   @override
   String get userAgent => _delegate.userAgent;
@@ -66,26 +68,39 @@ class _NiddlerHttpClient implements HttpClient {
   @override
   set userAgent(String value) => _delegate.userAgent = value;
 
-  _NiddlerHttpClient(this._delegate, this._niddler, this._sanitizer, {this.includeStackTraces});
+  _NiddlerHttpClient(this._delegate, this._niddler, this._sanitizer,
+      {this.includeStackTraces});
 
   @override
-  void addCredentials(Uri url, String realm, HttpClientCredentials credentials) => _delegate.addCredentials(url, realm, credentials);
+  void addCredentials(
+          Uri url, String realm, HttpClientCredentials credentials) =>
+      _delegate.addCredentials(url, realm, credentials);
 
   @override
-  void addProxyCredentials(String host, int port, String realm, HttpClientCredentials credentials) =>
+  void addProxyCredentials(String host, int port, String realm,
+          HttpClientCredentials credentials) =>
       _delegate.addProxyCredentials(host, port, realm, credentials);
 
   @override
   // ignore: avoid_setters_without_getters
-  set authenticate(Future<bool> Function(Uri url, String scheme, String realm) f) => _delegate.authenticate = f;
+  set authenticate(
+          Future<bool> Function(Uri url, String scheme, String realm) f) =>
+      _delegate.authenticate = f;
 
   @override
   // ignore: avoid_setters_without_getters
-  set authenticateProxy(Future<bool> Function(String host, int port, String scheme, String realm) f) => _delegate.authenticateProxy = f;
+  set authenticateProxy(
+          Future<bool> Function(
+                  String host, int port, String scheme, String realm)
+              f) =>
+      _delegate.authenticateProxy = f;
 
   @override
   // ignore: avoid_setters_without_getters
-  set badCertificateCallback(bool Function(X509Certificate cert, String host, int port) callback) => _delegate.badCertificateCallback = callback;
+  set badCertificateCallback(
+          bool Function(X509Certificate cert, String host, int port)
+              callback) =>
+      _delegate.badCertificateCallback = callback;
 
   @override
   void close({bool force = false}) => _delegate.close(force: force);
@@ -131,7 +146,8 @@ class _NiddlerHttpClient implements HttpClient {
   }
 
   @override
-  Future<HttpClientRequest> open(String method, String host, int port, String path) {
+  Future<HttpClientRequest> open(
+      String method, String host, int port, String path) {
     final openRequest = _delegate.open(method, host, port, path);
     return openRequest;
   }
@@ -145,9 +161,12 @@ class _NiddlerHttpClient implements HttpClient {
 
     return openRequest.then((request) {
       final connectionHeaderValue = request.headers.value('connection');
-      if (connectionHeaderValue != null && connectionHeaderValue.toLowerCase() == 'upgrade') return request;
+      if (connectionHeaderValue != null &&
+          connectionHeaderValue.toLowerCase() == 'upgrade') return request;
 
-      return _NiddlerHttpClientRequest(request, _niddler, Uuid().v4(), _sanitizer, includeStackTraces: includeStackTraces);
+      return _NiddlerHttpClientRequest(
+          request, _niddler, Uuid().v4(), _sanitizer,
+          includeStackTraces: includeStackTraces);
     });
   }
 
@@ -228,19 +247,19 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   bool get persistentConnection => _delegate.persistentConnection;
 
   @override
-  set persistentConnection(bool value) => _delegate.persistentConnection = value;
+  set persistentConnection(bool value) =>
+      _delegate.persistentConnection = value;
 
-  _NiddlerHttpClientRequest(this._delegate, this._niddler, String requestId, StackTraceSanitizer sanitizer, {bool includeStackTraces = false})
+  _NiddlerHttpClientRequest(this._delegate, this._niddler, String requestId,
+      StackTraceSanitizer sanitizer, {bool includeStackTraces = false})
       : _request = NiddlerRequest(
             _delegate.uri.toString(),
             _delegate.method,
             includeStackTraces
-                ? Chain.current()
+                ? _expandWithGaps(Chain.current()
                     .traces
                     .map((trace) => _filterFrames(trace, sanitizer))
-                    .where((trace) => trace.frames.isNotEmpty)
-                    .map((trace) => trace.toString())
-                    .toList()
+                    .where((trace) => trace.frames.isNotEmpty)).toList()
                 : null,
             Uuid().v4(),
             requestId,
@@ -256,7 +275,8 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   }
 
   @override
-  void addError(Object error, [StackTrace stackTrace]) => _delegate.addError(error, stackTrace);
+  void addError(Object error, [StackTrace stackTrace]) =>
+      _delegate.addError(error, stackTrace);
 
   @override
   Future addStream(Stream<List<int>> stream) {
@@ -272,14 +292,28 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     _encodeBody(_request, requestBodyBytes).then(_niddler.logRequestJson);
 
     final connectionHeader = _request.headers['connection'];
-    if (connectionHeader != null && connectionHeader.firstWhere((element) => element.toLowerCase() == 'upgrade') != null) return _delegate.close();
+    if (connectionHeader != null &&
+        connectionHeader
+                .firstWhere((element) => element.toLowerCase() == 'upgrade') !=
+            null) return _delegate.close();
 
     return _delegate.close().then((response) {
       final responseHeaders = Map<String, List<String>>();
       response.headers.forEach((key, value) => responseHeaders[key] = value);
 
-      final niddlerResponse = NiddlerResponse(response.statusCode, response.reasonPhrase, null, null, null, -1, -1, -1, Uuid().v4(), _request.requestId,
-          DateTime.now().millisecondsSinceEpoch, responseHeaders);
+      final niddlerResponse = NiddlerResponse(
+          response.statusCode,
+          response.reasonPhrase,
+          null,
+          null,
+          null,
+          -1,
+          -1,
+          -1,
+          Uuid().v4(),
+          _request.requestId,
+          DateTime.now().millisecondsSinceEpoch,
+          responseHeaders);
 
       return response.toList().then((bodyBytes) {
         _encodeBody(niddlerResponse, bodyBytes).then(_niddler.logResponseJson);
@@ -314,7 +348,8 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   void write(Object obj) => _delegate.write(obj);
 
   @override
-  void writeAll(Iterable objects, [String separator = '']) => _delegate.writeAll(objects, separator);
+  void writeAll(Iterable objects, [String separator = '']) =>
+      _delegate.writeAll(objects, separator);
 
   @override
   void writeCharCode(int charCode) => _delegate.writeCharCode(charCode);
@@ -363,7 +398,9 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
   String get reasonPhrase => _delegate.reasonPhrase;
 
   @override
-  Future<HttpClientResponse> redirect([String method, Uri url, bool followLoops]) => _delegate.redirect(method, url, followLoops); //TODO?
+  Future<HttpClientResponse> redirect(
+          [String method, Uri url, bool followLoops]) =>
+      _delegate.redirect(method, url, followLoops); //TODO?
 
   @override
   List<RedirectInfo> get redirects => _delegate.redirects;
@@ -376,15 +413,18 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
 
   @override
   Stream<List<int>> asBroadcastStream(
-      {void Function(StreamSubscription<List<int>> subscription) onListen, void Function(StreamSubscription<List<int>> subscription) onCancel}) {
+      {void Function(StreamSubscription<List<int>> subscription) onListen,
+      void Function(StreamSubscription<List<int>> subscription) onCancel}) {
     return _stream.asBroadcastStream(onListen: onListen, onCancel: onCancel);
   }
 
   @override
-  Stream<E> asyncExpand<E>(Stream<E> Function(List<int> event) convert) => _stream.asyncExpand(convert);
+  Stream<E> asyncExpand<E>(Stream<E> Function(List<int> event) convert) =>
+      _stream.asyncExpand(convert);
 
   @override
-  Stream<E> asyncMap<E>(FutureOr<E> Function(List<int> event) convert) => _stream.asyncMap(convert);
+  Stream<E> asyncMap<E>(FutureOr<E> Function(List<int> event) convert) =>
+      _stream.asyncMap(convert);
 
   @override
   Stream<R> cast<R>() => _stream.cast();
@@ -393,7 +433,9 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
   Future<bool> contains(Object needle) => _stream.contains(needle);
 
   @override
-  Stream<List<int>> distinct([bool Function(List<int> previous, List<int> next) equals]) => _stream.distinct(equals);
+  Stream<List<int>> distinct(
+          [bool Function(List<int> previous, List<int> next) equals]) =>
+      _stream.distinct(equals);
 
   @override
   Future<E> drain<E>([E futureValue]) => _stream.drain(futureValue);
@@ -402,22 +444,29 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
   Future<List<int>> elementAt(int index) => _stream.elementAt(index);
 
   @override
-  Future<bool> every(bool Function(List<int> element) test) => _stream.every(test);
+  Future<bool> every(bool Function(List<int> element) test) =>
+      _stream.every(test);
 
   @override
-  Stream<S> expand<S>(Iterable<S> Function(List<int> element) convert) => _stream.expand(convert);
+  Stream<S> expand<S>(Iterable<S> Function(List<int> element) convert) =>
+      _stream.expand(convert);
 
   @override
   Future<List<int>> get first => _stream.first;
 
   @override
-  Future<List<int>> firstWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _stream.firstWhere(test, orElse: orElse);
+  Future<List<int>> firstWhere(bool Function(List<int> element) test,
+          {List<int> Function() orElse}) =>
+      _stream.firstWhere(test, orElse: orElse);
 
   @override
-  Future<S> fold<S>(S initialValue, S Function(S previous, List<int> element) combine) => _stream.fold(initialValue, combine);
+  Future<S> fold<S>(
+          S initialValue, S Function(S previous, List<int> element) combine) =>
+      _stream.fold(initialValue, combine);
 
   @override
-  Future forEach(void Function(List<int> element) action) => _stream.forEach(action);
+  Future forEach(void Function(List<int> element) action) =>
+      _stream.forEach(action);
 
   @override
   Stream<List<int>> handleError(Function onError,
@@ -438,45 +487,58 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
   Future<List<int>> get last => _stream.last;
 
   @override
-  Future<List<int>> lastWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _stream.lastWhere(test, orElse: orElse);
+  Future<List<int>> lastWhere(bool Function(List<int> element) test,
+          {List<int> Function() orElse}) =>
+      _stream.lastWhere(test, orElse: orElse);
 
   @override
   Future<int> get length => _stream.length;
 
   @override
-  StreamSubscription<List<int>> listen(void Function(List<int> event) onData, {Function onError, void Function() onDone, bool cancelOnError}) {
-    return _stream.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  StreamSubscription<List<int>> listen(void Function(List<int> event) onData,
+      {Function onError, void Function() onDone, bool cancelOnError}) {
+    return _stream.listen(onData,
+        onError: onError, onDone: onDone, cancelOnError: cancelOnError);
   }
 
   @override
   Stream<S> map<S>(S Function(List<int> event) convert) => _stream.map(convert);
 
   @override
-  Future pipe(StreamConsumer<List<int>> streamConsumer) => _stream.pipe(streamConsumer);
+  Future pipe(StreamConsumer<List<int>> streamConsumer) =>
+      _stream.pipe(streamConsumer);
 
   @override
-  Future<List<int>> reduce(List<int> Function(List<int> previous, List<int> element) combine) => _stream.reduce(combine);
+  Future<List<int>> reduce(
+          List<int> Function(List<int> previous, List<int> element) combine) =>
+      _stream.reduce(combine);
 
   @override
   Future<List<int>> get single => _stream.single;
 
   @override
-  Future<List<int>> singleWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _stream.singleWhere(test, orElse: orElse);
+  Future<List<int>> singleWhere(bool Function(List<int> element) test,
+          {List<int> Function() orElse}) =>
+      _stream.singleWhere(test, orElse: orElse);
 
   @override
   Stream<List<int>> skip(int count) => _stream.skip(count);
 
   @override
-  Stream<List<int>> skipWhile(bool Function(List<int> element) test) => _stream.skipWhile(test);
+  Stream<List<int>> skipWhile(bool Function(List<int> element) test) =>
+      _stream.skipWhile(test);
 
   @override
   Stream<List<int>> take(int count) => _stream.take(count);
 
   @override
-  Stream<List<int>> takeWhile(bool Function(List<int> element) test) => _stream.takeWhile(test);
+  Stream<List<int>> takeWhile(bool Function(List<int> element) test) =>
+      _stream.takeWhile(test);
 
   @override
-  Stream<List<int>> timeout(Duration timeLimit, {void Function(EventSink<List<int>> sink) onTimeout}) => _stream.timeout(timeLimit, onTimeout: onTimeout);
+  Stream<List<int>> timeout(Duration timeLimit,
+          {void Function(EventSink<List<int>> sink) onTimeout}) =>
+      _stream.timeout(timeLimit, onTimeout: onTimeout);
 
   @override
   Future<List<List<int>>> toList() => _stream.toList();
@@ -485,13 +547,16 @@ class _NiddlerHttpClientResponse implements HttpClientResponse {
   Future<Set<List<int>>> toSet() => _stream.toSet();
 
   @override
-  Stream<S> transform<S>(StreamTransformer<List<int>, S> streamTransformer) => _stream.transform(streamTransformer);
+  Stream<S> transform<S>(StreamTransformer<List<int>, S> streamTransformer) =>
+      _stream.transform(streamTransformer);
 
   @override
-  Stream<List<int>> where(bool Function(List<int> event) test) => _stream.where(test);
+  Stream<List<int>> where(bool Function(List<int> event) test) =>
+      _stream.where(test);
 
   @override
-  HttpClientResponseCompressionState get compressionState => _delegate.compressionState;
+  HttpClientResponseCompressionState get compressionState =>
+      _delegate.compressionState;
 }
 
 class _IsolateData {
@@ -513,7 +578,8 @@ void _encodeBodyJson(_IsolateData body) {
   body.dataPort.send(body.message.toJsonString());
 }
 
-Future<String> _encodeBody(NiddlerMessageBase message, List<List<int>> bytes) async {
+Future<String> _encodeBody(
+    NiddlerMessageBase message, List<List<int>> bytes) async {
   final resultPort = ReceivePort();
   final errorPort = ReceivePort();
   final isolate = await Isolate.spawn(
@@ -551,4 +617,18 @@ Future<String> _encodeBody(NiddlerMessageBase message, List<List<int>> bytes) as
 Trace _filterFrames(Trace source, StackTraceSanitizer sanitizer) {
   final betterFrames = source.frames.where(sanitizer.accepts).toList();
   return Trace(betterFrames);
+}
+
+Iterable<String> _expandWithGaps(Iterable<Trace> source) {
+  final length = source.length;
+  var index = 0;
+  return source.expand((trace) {
+    final list = trace.frames
+        .map((frame) => '${frame.location} ${frame.member}')
+        .toList();
+    if (++index < length) {
+      list.add('<async gap>');
+    }
+    return list;
+  });
 }

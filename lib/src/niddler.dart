@@ -37,7 +37,9 @@ class NiddlerBuilder {
 
   /// Create the niddler instance
   Niddler build() {
-    return createNiddler(maxCacheSize, port, password, bundleId, serverInfo, sanitizer, includeStackTrace: includeStackTrace);
+    return createNiddler(
+        maxCacheSize, port, password, bundleId, serverInfo, sanitizer,
+        includeStackTrace: includeStackTrace);
   }
 }
 

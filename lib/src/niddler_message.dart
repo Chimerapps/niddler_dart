@@ -48,8 +48,8 @@ class NiddlerRequest extends NiddlerMessageBase {
   final List<String> stackTraces;
 
   /// Constructor
-  NiddlerRequest(this.url, this.method, this.stackTraces, String messageId, String requestId,
-      int timeStamp, Map<String, List<String>> headers)
+  NiddlerRequest(this.url, this.method, this.stackTraces, String messageId,
+      String requestId, int timeStamp, Map<String, List<String>> headers)
       : super(messageId, requestId, timeStamp, headers);
 
   /// Converts this request to a json object
