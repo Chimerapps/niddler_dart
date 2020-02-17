@@ -10,23 +10,36 @@ For a more complete example, see `example/main.dart`.
 
 ```dart
 import 'package:niddler_dart/niddler_dart.dart';
+import 'package:stack_trace/stack_trace.dart';
 
-main() {
-
-final niddlerBuilder = NiddlerBuilder()
-    ..bundleId = 'com.test.test'
-    ..serverInfo = NiddlerServerInfo('Some descriptive name', 'Some description')
-    ..port = 0; //0 to have niddler pick it's own port. Automatic discovery will make this visible
-
-  final niddler = niddlerBuilder.build();
-  await niddler.start();
-  niddler.install();
+main() async {
+  await Chain.capture(() async { //For better flutter stack traces, wrap main code in this Chain.capture from package stack_trace
+    final niddlerBuilder = NiddlerBuilder()
+        ..bundleId = 'com.test.test'
+        ..serverInfo = NiddlerServerInfo('Some descriptive name', 'Some description')
+        ..includeStackTrace = true //Capture request stack traces. Wrap all content inside main with `Chain.capture`
+        ..port = 0; //0 to have niddler pick it's own port. Automatic discovery will make this visible
   
-  //Make http requests ...
-  
-  await niddler.stop();
+      final niddler = niddlerBuilder.build();
+      await niddler.start();
+      niddler.install();
+    
+      //Make http requests ...
+    
+      await niddler.stop();
+  });
 }
 ```
+
+## Request site stack traces
+Since 0.6.0, niddler supports capturing stack traces at request site across async boundaries. This can have a (very) small performance impact.
+
+To enable, configure niddler to include stack traces by setting `includeStackTrace = true` in the builder, optionally configuring which stack frames to throw out
+via `sanitizer = implementation of StackTraceSanitizer` (defaults to a reasonable sanitizer for dart/flutter/dio).
+
+To capture stack traces across async blocks, wrap **ALL** code inside your main with `Chain.capture` from `package:stack_trace`
+
+Viewing stack traces for dart code is supported in the intellij plugin since version 2.5.0
 
 ## Features and bugs
 
