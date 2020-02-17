@@ -2,12 +2,18 @@
 // All rights reserved. Use of this source code is governed by
 // an MIT license that can be found in the LICENSE file.
 
+import 'package:niddler_dart/src/niddler_generic.dart';
 import 'package:niddler_dart/src/niddler_message.dart';
 
-import 'package:niddler_dart/src/niddler_generic.dart';
-
-Niddler createNiddler(int maxCacheSize, int port, String password,
-        String bundleId, NiddlerServerInfo serverInfo) =>
+Niddler createNiddler(
+  int maxCacheSize,
+  int port,
+  String password,
+  String bundleId,
+  NiddlerServerInfo serverInfo,
+  StackTraceSanitizer sanitizer, {
+  bool includeStackTrace,
+}) =>
     NiddlerNoop._();
 
 void installNiddler(Niddler niddler) {}
@@ -34,10 +40,10 @@ class NiddlerNoop implements Niddler {
   void logResponseJson(String response) {}
 
   @override
-  Future<bool> start() async => true;
+  Future<bool> start() => Future.value(true);
 
   @override
-  Future<void> stop() async {}
+  Future<void> stop() => Future.value(null);
 
   @override
   void install() {}

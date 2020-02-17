@@ -7,27 +7,35 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:uuid/uuid.dart';
-
 import 'package:niddler_dart/src/niddler_generic.dart';
 import 'package:niddler_dart/src/niddler_message.dart';
+import 'package:stack_trace/stack_trace.dart';
+import 'package:uuid/uuid.dart';
 
 class NiddlerHttpOverrides extends HttpOverrides {
   final Niddler _niddler;
+  final StackTraceSanitizer _sanitizer;
+  final bool includeStackTraces;
 
-  NiddlerHttpOverrides(this._niddler);
+  NiddlerHttpOverrides(this._niddler, this._sanitizer,
+      {this.includeStackTraces});
 
   @override
   HttpClient createHttpClient(SecurityContext context) {
     return _NiddlerHttpClient(
-        super.createHttpClient(context) ?? HttpClient(context: context),
-        _niddler);
+      super.createHttpClient(context) ?? HttpClient(context: context),
+      _niddler,
+      _sanitizer,
+      includeStackTraces: includeStackTraces,
+    );
   }
 }
 
 class _NiddlerHttpClient implements HttpClient {
   final HttpClient _delegate;
   final Niddler _niddler;
+  final StackTraceSanitizer _sanitizer;
+  final bool includeStackTraces;
 
   @override
   bool get autoUncompress => _delegate.autoUncompress;
@@ -60,7 +68,8 @@ class _NiddlerHttpClient implements HttpClient {
   @override
   set userAgent(String value) => _delegate.userAgent = value;
 
-  _NiddlerHttpClient(this._delegate, this._niddler);
+  _NiddlerHttpClient(this._delegate, this._niddler, this._sanitizer,
+      {this.includeStackTraces});
 
   @override
   void addCredentials(
@@ -155,7 +164,9 @@ class _NiddlerHttpClient implements HttpClient {
       if (connectionHeaderValue != null &&
           connectionHeaderValue.toLowerCase() == 'upgrade') return request;
 
-      return _NiddlerHttpClientRequest(request, _niddler, Uuid().v4());
+      return _NiddlerHttpClientRequest(
+          request, _niddler, Uuid().v4(), _sanitizer,
+          includeStackTraces: includeStackTraces);
     });
   }
 
@@ -239,10 +250,17 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   set persistentConnection(bool value) =>
       _delegate.persistentConnection = value;
 
-  _NiddlerHttpClientRequest(this._delegate, this._niddler, String requestId)
+  _NiddlerHttpClientRequest(this._delegate, this._niddler, String requestId,
+      StackTraceSanitizer sanitizer, {bool includeStackTraces = false})
       : _request = NiddlerRequest(
             _delegate.uri.toString(),
             _delegate.method,
+            includeStackTraces
+                ? _expandWithGaps(Chain.current()
+                    .traces
+                    .map((trace) => _filterFrames(trace, sanitizer))
+                    .where((trace) => trace.frames.isNotEmpty)).toList()
+                : null,
             Uuid().v4(),
             requestId,
             DateTime.now().millisecondsSinceEpoch,
@@ -594,4 +612,23 @@ Future<String> _encodeBody(
   errorPort.close();
   isolate.kill();
   return result.future;
+}
+
+Trace _filterFrames(Trace source, StackTraceSanitizer sanitizer) {
+  final betterFrames = source.frames.where(sanitizer.accepts).toList();
+  return Trace(betterFrames);
+}
+
+Iterable<String> _expandWithGaps(Iterable<Trace> source) {
+  final length = source.length;
+  var index = 0;
+  return source.expand((trace) {
+    final list = trace.frames
+        .map((frame) => '${frame.location} ${frame.member}')
+        .toList();
+    if (++index < length) {
+      list.add('<async gap>');
+    }
+    return list;
+  });
 }

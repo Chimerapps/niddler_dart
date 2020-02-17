@@ -3,6 +3,7 @@
 // an MIT license that can be found in the LICENSE file.
 
 import 'package:niddler_dart/src/niddler_message.dart';
+import 'package:stack_trace/stack_trace.dart';
 
 /// Encapsulates some information about the niddler server instance. This is cosmetic information for the client
 class NiddlerServerInfo {
@@ -47,4 +48,9 @@ abstract class Niddler {
 
   /// Installs niddler on the process
   void install();
+}
+
+// ignore: one_member_abstracts
+abstract class StackTraceSanitizer {
+  bool accepts(Frame frame);
 }

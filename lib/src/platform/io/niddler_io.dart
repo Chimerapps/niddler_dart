@@ -23,19 +23,40 @@ _niddlerDartDebugPrint(String message, {int wrapWidth}) {
   print(message);
 }
 
-Niddler createNiddler(int maxCacheSize, int port, String password,
-        String bundleId, NiddlerServerInfo serverInfo) =>
-    NiddlerImpl._(maxCacheSize, port, password, bundleId, serverInfo);
+Niddler createNiddler(
+  int maxCacheSize,
+  int port,
+  String password,
+  String bundleId,
+  NiddlerServerInfo serverInfo,
+  StackTraceSanitizer sanitizer, {
+  bool includeStackTrace,
+}) =>
+    NiddlerImpl._(maxCacheSize, port, password, bundleId, serverInfo, sanitizer,
+        includeStackTrace: includeStackTrace);
 
 /// Heart of the consumer interface of niddler. Use this class to log custom requests and responses and to
 /// start and stop the server
 class NiddlerImpl implements Niddler {
   final _NiddlerImplementation _implementation;
 
-  NiddlerImpl._(int maxCacheSize, int port, String password, String bundleId,
-      NiddlerServerInfo serverInfo)
-      : _implementation = _NiddlerImplementation(
-            maxCacheSize, port, password, bundleId, serverInfo);
+  NiddlerImpl._(
+    int maxCacheSize,
+    int port,
+    String password,
+    String bundleId,
+    NiddlerServerInfo serverInfo,
+    StackTraceSanitizer sanitizer, {
+    bool includeStackTrace,
+  }) : _implementation = _NiddlerImplementation(
+          maxCacheSize,
+          port: port,
+          password: password,
+          bundleId: bundleId,
+          serverInfo: serverInfo,
+          stackTraceSanitizer: sanitizer,
+          includeStackTraces: includeStackTrace,
+        );
 
   /// Supply a new request to niddler
   @override
@@ -88,26 +109,37 @@ class NiddlerImpl implements Niddler {
   /// Installs niddler on the process
   @override
   void install() {
-    HttpOverrides.global = NiddlerHttpOverrides(this);
+    HttpOverrides.global = NiddlerHttpOverrides(
+      this,
+      _implementation.stackTraceSanitizer,
+      includeStackTraces: _implementation.includeStackTraces,
+    );
   }
 }
 
 class _NiddlerImplementation implements NiddlerServerConnectionListener {
   final NiddlerMessageCache _messagesCache;
   final NiddlerServer _server;
-  final NiddlerServerInfo _serverInfo;
+  final NiddlerServerInfo serverInfo;
   final List<RegExp> _blacklist = [];
   final int protocolVersion = 3;
+  final StackTraceSanitizer stackTraceSanitizer;
+  final bool includeStackTraces;
   bool _started = false;
   NiddlerServerAnnouncementManager _announcementManager;
 
   _NiddlerImplementation(int maxCacheSize,
-      [int port = 0, String password, String bundleId, this._serverInfo])
+      {int port = 0,
+      String password,
+      String bundleId,
+      this.serverInfo,
+      this.stackTraceSanitizer,
+      this.includeStackTraces})
       : _messagesCache = NiddlerMessageCache(maxCacheSize),
         _server = NiddlerServer(port, password, bundleId) {
     _server.connectionListener = this;
     _announcementManager = NiddlerServerAnnouncementManager(
-        bundleId, (_serverInfo == null) ? null : _serverInfo.icon, _server);
+        bundleId, (serverInfo == null) ? null : serverInfo.icon, _server);
   }
 
   void send(String message) {
@@ -141,12 +173,12 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
 
   @override
   Future<void> onNewConnection(NiddlerConnection connection) async {
-    if (_serverInfo != null) {
+    if (serverInfo != null) {
       final data = {
         'type': 'serverInfo',
-        'serverName': _serverInfo.name,
-        'serverDescription': _serverInfo.description,
-        'icon': _serverInfo.icon
+        'serverName': serverInfo.name,
+        'serverDescription': serverInfo.description,
+        'icon': serverInfo.icon,
       };
       connection.send(jsonEncode(data));
     }

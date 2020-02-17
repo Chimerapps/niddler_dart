@@ -2,19 +2,36 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:niddler_dart/niddler_dart.dart';
+import 'package:stack_trace/stack_trace.dart';
 
 Future<void> main() async {
-  final niddlerBuilder = NiddlerBuilder()
-    ..bundleId = 'com.test.test'
-    ..serverInfo =
-        NiddlerServerInfo('Some descriptive name', 'Some description')
-    ..port =
-        0; //0 to have niddler pick it's own port. Automatic discovery will make this visible
+  await Chain.capture(() async {
+    final niddlerBuilder = NiddlerBuilder()
+      ..bundleId = 'com.test.test'
+      ..serverInfo =
+          NiddlerServerInfo('Some descriptive name', 'Some description')
+      ..includeStackTrace = true
+      ..port =
+          0; //0 to have niddler pick it's own port. Automatic discovery will make this visible
 
-  final niddler = niddlerBuilder.build()..addBlacklist(RegExp('.*/get'));
-  await niddler.start();
-  niddler.install();
+    final niddler = niddlerBuilder.build()..addBlacklist(RegExp('.*/get'));
+    await niddler.start();
+    niddler.install();
 
+    await executePost1();
+    await executeGet();
+    await executePost2();
+    await getImage();
+
+    await Future.delayed(const Duration(seconds: 10000));
+
+    await niddler.stop();
+
+    await Future.delayed(const Duration(seconds: 2));
+  });
+}
+
+Future<void> executePost1() async {
   final value = {
     'test': 'data',
     'arrayData': [
@@ -24,22 +41,22 @@ Future<void> main() async {
       {'nested': 'nestedData'}
     ]
   };
-
   final response = await http.post('http://httpbin.org/post',
       body: json.encode(value), headers: {'content-type': 'application/json'});
+  print('Post body: ${response.body}');
+}
+
+Future<void> executeGet() async {
   final response2 = await http.get('http://httpbin.org/get',
       headers: {'content-type': 'application/json'});
-  await http.get(
-      'https://raw.githubusercontent.com/zynksoftware/samples/master/XML%20Samples/Credit%20note%20with%20Sales%20Payment.xml');
-  await http.get('https://www.google.com/'); //Some html!
-  await http.get('http://placekitten.com/200/300');
-
-  print('Post body: ${response.body}');
   print('Get body (blacklisted): ${response2.body}');
+}
 
-  await Future.delayed(const Duration(seconds: 100));
+Future<void> executePost2() async {
+  await http.post('http://httpbin.org/post',
+      body: {'user': 'example@example.com', 'password': 'superSecretPassword'});
+}
 
-  await niddler.stop();
-
-  await Future.delayed(const Duration(seconds: 2));
+Future<void> getImage() async {
+  await http.get('http://placekitten.com/200/300');
 }
