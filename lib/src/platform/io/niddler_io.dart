@@ -14,14 +14,16 @@ import 'package:niddler_dart/src/platform/io/niddler_dart.dart';
 import 'package:niddler_dart/src/platform/io/niddler_server.dart';
 import 'package:niddler_dart/src/platform/io/niddler_server_announcement_manager.dart';
 
-typedef NiddlerDebugPrintCallback = void Function(String message,
-    {int wrapWidth});
+typedef NiddlerDebugPrintCallback = void Function(String message, {int wrapWidth});
 
 NiddlerDebugPrintCallback niddlerDebugPrint = _niddlerDartDebugPrint;
+NiddlerDebugPrintCallback niddlerVerbosePrint = _dontPrint;
 
 _niddlerDartDebugPrint(String message, {int wrapWidth}) {
   print(message);
 }
+
+_dontPrint(String message, {int wrapWidth}) {}
 
 Niddler createNiddler(
   int maxCacheSize,
@@ -32,8 +34,7 @@ Niddler createNiddler(
   StackTraceSanitizer sanitizer, {
   bool includeStackTrace,
 }) =>
-    NiddlerImpl._(maxCacheSize, port, password, bundleId, serverInfo, sanitizer,
-        includeStackTrace: includeStackTrace);
+    NiddlerImpl._(maxCacheSize, port, password, bundleId, serverInfo, sanitizer, includeStackTrace: includeStackTrace);
 
 /// Heart of the consumer interface of niddler. Use this class to log custom requests and responses and to
 /// start and stop the server
@@ -115,6 +116,9 @@ class NiddlerImpl implements Niddler {
       includeStackTraces: _implementation.includeStackTraces,
     );
   }
+
+  @override
+  NiddlerDebugger get debugger => _implementation.debugger;
 }
 
 class _NiddlerImplementation implements NiddlerServerConnectionListener {
@@ -128,19 +132,14 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   bool _started = false;
   NiddlerServerAnnouncementManager _announcementManager;
 
-  _NiddlerImplementation(int maxCacheSize,
-      {int port = 0,
-      String password,
-      String bundleId,
-      this.serverInfo,
-      this.stackTraceSanitizer,
-      this.includeStackTraces})
+  _NiddlerImplementation(int maxCacheSize, {int port = 0, String password, String bundleId, this.serverInfo, this.stackTraceSanitizer, this.includeStackTraces})
       : _messagesCache = NiddlerMessageCache(maxCacheSize),
         _server = NiddlerServer(port, password, bundleId) {
     _server.connectionListener = this;
-    _announcementManager = NiddlerServerAnnouncementManager(
-        bundleId, (serverInfo == null) ? null : serverInfo.icon, _server);
+    _announcementManager = NiddlerServerAnnouncementManager(bundleId, (serverInfo == null) ? null : serverInfo.icon, _server);
   }
+
+  NiddlerDebugger get debugger => _server.debugger;
 
   void send(String message) {
     _messagesCache.put(message);
@@ -192,14 +191,8 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
 
   String _buildBlacklistMessage() {
     // ignore: omit_local_variable_types
-    final Map<String, dynamic> data = {
-      'type': 'staticBlacklist',
-      'id': '<dart>',
-      'name': '<dart>'
-    }; // ignore: omit_local_variable_types
-    data['entries'] = _blacklist
-        .map((regex) => {'pattern': regex.pattern, 'enabled': true})
-        .toList();
+    final Map<String, dynamic> data = {'type': 'staticBlacklist', 'id': '<dart>', 'name': '<dart>'}; // ignore: omit_local_variable_types
+    data['entries'] = _blacklist.map((regex) => {'pattern': regex.pattern, 'enabled': true}).toList();
     return jsonEncode(data);
   }
 }

@@ -6,10 +6,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:niddler_dart/niddler_dart.dart';
+import 'package:niddler_dart/src/platform/debugger/niddler_debugger.dart';
+import 'package:niddler_dart/src/platform/io/niddler_io.dart';
 import 'package:pointycastle/digests/sha512.dart';
 import 'package:synchronized/synchronized.dart';
-
-import 'package:niddler_dart/src/platform/io/niddler_io.dart';
 
 const _chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -28,8 +29,12 @@ class NiddlerServer {
   final String _password;
   final _lock = Lock();
   final List<NiddlerConnection> _connections = List();
+  final NiddlerDebuggerImpl _debugger = NiddlerDebuggerImpl();
 
   int get port => _server.port;
+
+  NiddlerDebugger get debugger => _debugger;
+
   NiddlerServerConnectionListener connectionListener;
 
   NiddlerServer(this._port, [this._bundleId, this._password]);
@@ -55,13 +60,10 @@ class NiddlerServer {
   }
 
   void _onNewConnection(WebSocket socket) {
-    final connection = NiddlerConnection(socket, connectionListener);
+    final connection = NiddlerConnection(socket, connectionListener, this);
     _lock.synchronized(() async {
       _connections.add(connection);
-      socket.listen(connection.onMessage,
-          onDone: () => _onSocketClosed(connection),
-          onError: (_) => _onSocketClosed(connection),
-          cancelOnError: true);
+      socket.listen(connection.onMessage, onDone: () => _onSocketClosed(connection), onError: (_) => _onSocketClosed(connection), cancelOnError: true);
     });
 
     if (_password != null && _bundleId != null) {
@@ -72,6 +74,7 @@ class NiddlerServer {
   }
 
   void _onSocketClosed(NiddlerConnection socket) {
+    _debugger.onConnectionClosed(socket);
     _lock.synchronized(() async {
       _connections.remove(socket);
     });
@@ -80,25 +83,27 @@ class NiddlerServer {
 
 /// Represents a client connection (over websockets). Connections will not send data until they have authenticated (when required)
 class NiddlerConnection {
+  static const _MESSAGE_AUTH = 'authReply';
+  static const _MESSAGE_START_DEBUG = 'startDebug';
+  static const _MESSAGE_END_DEBUG = 'endDebug';
+  static const _MESSAGE_DEBUG_CONTROL = 'controlDebug';
+
   final WebSocket _socket;
+  final NiddlerServer _server;
   final NiddlerServerConnectionListener _connectionListener;
   bool _authenticated = false;
   String _currentAuthRequestData;
   String _currentPassword;
 
-  NiddlerConnection(this._socket, this._connectionListener) {
-    _socket.add('{"type":"protocol","protocolVersion":3}');
+  NiddlerConnection(this._socket, this._connectionListener, this._server) {
+    _socket.add('{"type":"protocol","protocolVersion":4}');
   }
 
   void sendAuthRequest(String password, String bundleId) {
     final authRequest = _generateAuthRequest();
     _currentAuthRequestData = authRequest;
     _currentPassword = password;
-    final messageData = {
-      'type': 'authRequest',
-      'hash': authRequest,
-      'package': bundleId
-    };
+    final messageData = {'type': 'authRequest', 'hash': authRequest, 'package': bundleId};
     _socket.add(json.encode(messageData));
   }
 
@@ -120,8 +125,19 @@ class NiddlerConnection {
     final parsedJson = jsonDecode(data);
     final type = parsedJson['type'];
     switch (type) {
-      case 'authReply':
+      case _MESSAGE_AUTH:
         _handleAuthReply(parsedJson['hashKey']);
+        break;
+      case _MESSAGE_START_DEBUG:
+        if (_authenticated) {
+          _server._debugger.onDebuggerAttached(this);
+        }
+        break;
+      case _MESSAGE_END_DEBUG:
+        _server._debugger.onDebuggerConnectionClosed();
+        break;
+      case _MESSAGE_DEBUG_CONTROL:
+        _server._debugger.onControlMessage(parsedJson, this);
         break;
     }
   }
@@ -132,8 +148,7 @@ class NiddlerConnection {
       return;
     }
     final shaDigest = SHA512Digest();
-    final base64Data = base64Encode(shaDigest
-        .process(utf8.encode(_currentAuthRequestData + _currentPassword)));
+    final base64Data = base64Encode(shaDigest.process(utf8.encode(_currentAuthRequestData + _currentPassword)));
     if (hashKey == base64Data) {
       onAuthSuccess();
     } else {

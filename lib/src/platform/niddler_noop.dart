@@ -14,12 +14,12 @@ Niddler createNiddler(
   StackTraceSanitizer sanitizer, {
   bool includeStackTrace,
 }) =>
-    NiddlerNoop._();
+    const NiddlerNoop._();
 
 void installNiddler(Niddler niddler) {}
 
 class NiddlerNoop implements Niddler {
-  NiddlerNoop._();
+  const NiddlerNoop._();
 
   @override
   void addBlacklist(RegExp regex) {}
@@ -47,4 +47,23 @@ class NiddlerNoop implements Niddler {
 
   @override
   void install() {}
+
+  @override
+  NiddlerDebugger get debugger => const NiddlerDebuggerNoop._();
+}
+
+class NiddlerDebuggerNoop implements NiddlerDebugger {
+  const NiddlerDebuggerNoop._();
+
+  @override
+  bool get isActive => false;
+
+  @override
+  Future<bool> waitForConnection() => Future.value(false);
+
+  @override
+  Future<DebugRequest> overrideRequest(NiddlerRequest request) => Future.value(null);
+
+  @override
+  Future<DebugResponse> overrideResponse(NiddlerRequest request, NiddlerResponse response) => Future.value(null);
 }

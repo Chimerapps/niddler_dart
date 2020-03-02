@@ -2,6 +2,7 @@
 // All rights reserved. Use of this source code is governed by
 // an MIT license that can be found in the LICENSE file.
 
+import 'package:meta/meta.dart';
 import 'package:niddler_dart/src/niddler_message.dart';
 import 'package:stack_trace/stack_trace.dart';
 
@@ -48,9 +49,54 @@ abstract class Niddler {
 
   /// Installs niddler on the process
   void install();
+
+  /// The debugger instance used to debug/change network requests/responses
+  NiddlerDebugger get debugger;
 }
 
 // ignore: one_member_abstracts
 abstract class StackTraceSanitizer {
   bool accepts(Frame frame);
+}
+
+abstract class NiddlerDebugger {
+  bool get isActive;
+
+  Future<bool> waitForConnection();
+
+  Future<DebugRequest> overrideRequest(NiddlerRequest request);
+
+  Future<DebugResponse> overrideResponse(NiddlerRequest request, NiddlerResponse response);
+}
+
+class DebugRequest {
+  final String url;
+  final String method;
+  final Map<String, List<String>> headers;
+  final String encodedBody;
+  final String bodyMimeType;
+
+  DebugRequest({
+    @required this.url,
+    @required this.method,
+    this.headers,
+    this.encodedBody,
+    this.bodyMimeType,
+  });
+}
+
+class DebugResponse {
+  final int code;
+  final String message;
+  final Map<String, List<String>> headers;
+  final String encodedBody;
+  final String bodyMimeType;
+
+  DebugResponse({
+    @required this.code,
+    @required this.message,
+    this.headers,
+    this.encodedBody,
+    this.bodyMimeType,
+  });
 }
