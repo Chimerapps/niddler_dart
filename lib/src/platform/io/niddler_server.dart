@@ -50,6 +50,9 @@ class NiddlerServer {
   Future<void> shutdown() async {
     await _server.close(force: true);
     _server = null;
+    await _lock.synchronized(() async {
+      _connections.forEach((socket) => socket.close());
+    });
   }
 
   /// Sends this message to all connected (and authenticated) clients
@@ -163,5 +166,9 @@ class NiddlerConnection {
       buffer.writeCharCode(_chars.codeUnitAt(rnd.nextInt(_chars.length)));
     }
     return buffer.toString();
+  }
+
+  void close() {
+    _socket.close();
   }
 }

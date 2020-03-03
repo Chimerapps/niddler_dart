@@ -13,6 +13,8 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
   static const _MESSAGE_DEACTIVATE = 'deactivate';
   static const _MESSAGE_DEBUG_REQUEST = 'debugRequest';
   static const _MESSAGE_ADD_REQUEST_OVERRIDE = 'addRequestOverride';
+  static const _MESSAGE_DEBUG_REPLY = 'debugReply';
+  static const _MESSAGE_ADD_RESPONSE = 'addResponse';
 
   _NiddlerDebuggerConfiguration _configuration;
   final _connectionCompleter = Completer<bool>();
@@ -39,8 +41,9 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
 
   @override
   Future<DebugResponse> overrideResponse(NiddlerRequest request, NiddlerResponse response) {
-    // TODO: implement overrideResponse
-    return Future.value(null);
+    if (!isActive || _currentConnection == null) return Future.value(null);
+
+    return _configuration.overrideResponse(request, response);
   }
 
   void onDebuggerAttached(NiddlerConnection niddlerConnection) {
@@ -83,8 +86,14 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
       case _MESSAGE_ADD_REQUEST_OVERRIDE:
         _configuration.addRequestOverrideAction(_DebugRequestOverrideAction(body));
         break;
+      case _MESSAGE_ADD_RESPONSE:
+        _configuration.addResponseOverrideAction(_DebugResponseOverrideAction(body));
+        break;
       case _MESSAGE_DEBUG_REQUEST:
         _configuration.onDebugRequest(envelope[_KEY_MESSAGE_ID], _parseRequestOverride(body));
+        break;
+      case _MESSAGE_DEBUG_REPLY:
+        _configuration.onDebugResponse(envelope[_KEY_MESSAGE_ID], _parseResponseOverride(body));
         break;
     }
   }
@@ -95,11 +104,28 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
     return _configuration.sendHandleRequestOverride(request, _currentConnection);
   }
 
+  Future<DebugResponse> sendHandleResponseOverride(NiddlerRequest request, NiddlerResponse response) {
+    if (_currentConnection == null) return Future.value(null);
+
+    return _configuration.sendHandleResponseOverride(request, response, _currentConnection);
+  }
+
   DebugRequest _parseRequestOverride(body) {
     if (body == null) return null;
     return DebugRequest(
       url: body['url'],
       method: body['method'],
+      headers: _parseHeaders(body['headers']),
+      encodedBody: body['encodedBody'],
+      bodyMimeType: body['bodyMimeType'],
+    );
+  }
+
+  DebugResponse _parseResponseOverride(body) {
+    if (body == null) return null;
+    return DebugResponse(
+      code: body['code'],
+      message: body['message'],
       headers: _parseHeaders(body['headers']),
       encodedBody: body['encodedBody'],
       bodyMimeType: body['bodyMimeType'],
@@ -125,6 +151,7 @@ class _NiddlerDebuggerConfiguration {
   final _waitingRequests = Map<String, Completer<DebugRequest>>();
   final _waitingResponses = Map<String, Completer<DebugResponse>>();
   final _requestOverrides = List<_RequestOverrideAction>();
+  final _responseOverrides = List<_ResponseOverrideAction>();
 
   bool isActive = false;
 
@@ -136,6 +163,7 @@ class _NiddlerDebuggerConfiguration {
     _waitingRequests.clear();
     _waitingResponses.clear();
     _requestOverrides.clear();
+    _responseOverrides.clear();
   }
 
   Future<DebugRequest> sendHandleRequestOverride(NiddlerRequest request, NiddlerConnection connection) {
@@ -146,6 +174,23 @@ class _NiddlerDebuggerConfiguration {
     final jsonEnvelope = Map<String, dynamic>();
     jsonEnvelope['type'] = 'debugRequest';
     jsonEnvelope['request'] = request.toJson();
+
+    final jsonMessage = json.encode(jsonEnvelope);
+
+    connection.send(jsonMessage);
+
+    return completer.future;
+  }
+
+  Future<DebugResponse> sendHandleResponseOverride(NiddlerRequest request, NiddlerResponse response, NiddlerConnection connection) {
+    final completer = Completer<DebugResponse>();
+    _waitingResponses[request.messageId] = completer;
+
+    //TODO isolate
+    final jsonEnvelope = Map<String, dynamic>();
+    jsonEnvelope['type'] = 'debugRequest';
+    jsonEnvelope['requestId'] = request.messageId;
+    jsonEnvelope['response'] = response.toJson();
 
     final jsonMessage = json.encode(jsonEnvelope);
 
@@ -173,6 +218,26 @@ class _NiddlerDebuggerConfiguration {
     });
     return result ?? Future.value(null);
   }
+
+  Future<DebugResponse> overrideResponse(NiddlerRequest request, NiddlerResponse response) {
+    Future<DebugResponse> result;
+    _responseOverrides.forEach((handler) {
+      if (result != null) return;
+      final future = handler.handleRequest(request, response, _debugger);
+      if (future != null) {
+        result = future;
+      }
+    });
+    return result ?? Future.value(null);
+  }
+
+  void onDebugResponse(String messageId, DebugResponse debugResponse) {
+    _waitingResponses.remove(messageId)?.complete(debugResponse);
+  }
+
+  void addResponseOverrideAction(_ResponseOverrideAction responseOverrideAction) {
+    _responseOverrides.add(responseOverrideAction);
+  }
 }
 
 class _DebugRequestOverrideAction extends _RequestOverrideAction {
@@ -195,10 +260,39 @@ class _DebugRequestOverrideAction extends _RequestOverrideAction {
   }
 }
 
+class _DebugResponseOverrideAction extends _ResponseOverrideAction {
+  final RegExp _regex;
+  final String _method;
+  final int _responseCode;
+
+  _DebugResponseOverrideAction(json)
+      : _regex = RegExp(json['regex']),
+        _method = json['matchMethod']?.toLowerCase(),
+        _responseCode = json['responseCode'],
+        super(json);
+
+  @override
+  Future<DebugResponse> handleRequest(NiddlerRequest request, NiddlerResponse response, NiddlerDebuggerImpl debugger) {
+    if (!active) return Future.value(null);
+
+    if (_regex != null && !_regex.hasMatch(request.url)) return Future.value(null);
+    if (_method != null && _method != request.method?.toLowerCase()) return Future.value(null);
+    if (_responseCode != null && _responseCode != response.statusCode) return Future.value(null);
+
+    return debugger.sendHandleResponseOverride(request, response);
+  }
+}
+
 abstract class _RequestOverrideAction extends _DebugAction {
   _RequestOverrideAction(json) : super(json);
 
   Future<DebugRequest> handleRequest(final NiddlerRequest request, final NiddlerDebuggerImpl debugger);
+}
+
+abstract class _ResponseOverrideAction extends _DebugAction {
+  _ResponseOverrideAction(json) : super(json);
+
+  Future<DebugResponse> handleRequest(final NiddlerRequest request, final NiddlerResponse response, final NiddlerDebuggerImpl debugger);
 }
 
 abstract class _DebugAction {

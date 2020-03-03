@@ -376,19 +376,50 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     final debuggerResponse = await _niddler.debugger.overrideResponse(request, initialNiddlerResponse);
     if (debuggerResponse == null) return _handleDefaultResponse(initialNiddlerResponse, originalResponse, bodyBytes);
 
-    //TODO
-    throw ArgumentError('Not supported yet');
+    final newHeaders = _SimpleHeaders()
+      ..host = originalResponse.headers.host
+      ..port = originalResponse.headers.port;
+    debuggerResponse.headers.forEach((key, values) => values.forEach((value) => newHeaders.add(key, value)));
+    final cookies = newHeaders['set-cookie']?.map((value) => Cookie.fromSetCookieValue(value))?.toList() ?? List();
+
+    final changedNiddlerResponse = NiddlerResponse(
+      statusCode: debuggerResponse.code,
+      statusLine: debuggerResponse.message,
+      httpVersion: null,
+      writeTime: -1,
+      readTime: -1,
+      waitTime: -1,
+      timeStamp: initialNiddlerResponse.timeStamp,
+      headers: debuggerResponse.headers,
+      messageId: initialNiddlerResponse.messageId,
+      requestId: requestId,
+    );
+    List<List<int>> newBody;
+    if (debuggerResponse.encodedBody != null) {
+      newBody = [const Base64Codec.urlSafe().decode(debuggerResponse.encodedBody)];
+    }
+
+    final stringMessage = await _encodeBody(changedNiddlerResponse, newBody);
+    _niddler.logResponseJson(stringMessage);
+
+    return _NiddlerHttpClientResponseWrapper(
+      originalResponse,
+      newBody,
+      overrideCookies: cookies,
+      overrideHeaders: headers,
+      overrideReasonPhrase: debuggerResponse.message,
+      overrideStatusCode: debuggerResponse.code,
+    );
   }
 
   Future<HttpClientResponse> _handleDefaultResponse(
     NiddlerResponse initialNiddlerResponse,
     HttpClientResponse originalResponse,
     List<List<int>> bodyBytes,
-  ) async {
-    final stringMessage = await _encodeBody(initialNiddlerResponse, bodyBytes);
-    _niddler.logResponseJson(stringMessage);
+  ) {
+    _encodeBody(initialNiddlerResponse, bodyBytes).then(_niddler.logResponseJson);
 
-    return _NiddlerHttpClientResponseWrapper(originalResponse, bodyBytes);
+    return Future.value(_NiddlerHttpClientResponseWrapper(originalResponse, bodyBytes));
   }
 
   @override
@@ -499,13 +530,13 @@ class _NiddlerHttpClientResponseWrapper extends _NiddlerHttpClientResponseStream
   X509Certificate get certificate => _originalResponse.certificate;
 
   @override
-  HttpClientResponseCompressionState get compressionState => HttpClientResponseCompressionState.decompressed;
+  HttpClientResponseCompressionState get compressionState => _originalResponse.compressionState;
 
   @override
   HttpConnectionInfo get connectionInfo => _originalResponse.connectionInfo;
 
   @override
-  int get contentLength => -1; //Due to decompressed flag, this can be -1
+  int get contentLength => _originalResponse.contentLength; //Due to decompressed flag, this can be -1
 
   @override
   List<Cookie> get cookies => overrideCookies ?? _originalResponse.cookies;

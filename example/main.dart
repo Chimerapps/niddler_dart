@@ -26,11 +26,15 @@ Future<void> main() async {
     await executePost2();
     await getImage();
 
-    await Future.delayed(const Duration(seconds: 10000));
+    await Future.delayed(const Duration(seconds: 10));
+
+    print('Asking niddler to stop');
 
     await niddler.stop();
 
-    await Future.delayed(const Duration(seconds: 2));
+    print('Niddler has stopped');
+
+    await Future.delayed(const Duration(seconds: 1));
   });
 }
 
