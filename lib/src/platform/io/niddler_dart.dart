@@ -36,7 +36,6 @@ class _NiddlerHttpClient implements HttpClient {
   final Niddler _niddler;
   final StackTraceSanitizer _sanitizer;
   final bool includeStackTraces;
-  final NiddlerDebugger _debugger;
 
   @override
   bool get autoUncompress => _delegate.autoUncompress;
@@ -70,8 +69,7 @@ class _NiddlerHttpClient implements HttpClient {
   set userAgent(String value) => _delegate.userAgent = value;
 
   _NiddlerHttpClient(this._delegate, this._niddler, this._sanitizer,
-      {this.includeStackTraces})
-      : _debugger = _niddler.debugger;
+      {this.includeStackTraces});
 
   @override
   void addCredentials(
@@ -390,9 +388,10 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     );
 
     return originalResponse.toList().then((bodyBytes) {
-      if (!_niddler.debugger.isActive)
+      if (!_niddler.debugger.isActive) {
         return _handleDefaultResponse(
             initialNiddlerResponse, originalResponse, bodyBytes);
+      }
 
       return _handleResponseWithDebugger(
           request, initialNiddlerResponse, originalResponse, bodyBytes);
@@ -416,9 +415,10 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
     final debuggerResponse = await _niddler.debugger
         .overrideResponse(request, initialNiddlerResponse);
-    if (debuggerResponse == null)
+    if (debuggerResponse == null) {
       return _handleDefaultResponse(
           initialNiddlerResponse, originalResponse, bodyBytes);
+    }
 
     final newHeaders = _SimpleHeaders()
       ..host = originalResponse.headers.host
@@ -720,7 +720,7 @@ abstract class _NiddlerHttpClientResponseStreamBase
   Future<bool> get isEmpty => _bodyStream.isEmpty;
 
   @override
-  Future<String> join([String separator = ""]) => _bodyStream.join(separator);
+  Future<String> join([String separator = '']) => _bodyStream.join(separator);
 
   @override
   Future<List<int>> get last => _bodyStream.last;
@@ -835,8 +835,9 @@ class _SimpleHeaders implements HttpHeaders {
     if (date != null) to.date = date;
     if (expires != null) to.expires = expires;
     if (ifModifiedSince != null) to.ifModifiedSince = ifModifiedSince;
-    if (persistentConnection != null)
+    if (persistentConnection != null) {
       to.persistentConnection = persistentConnection;
+    }
 
     _headers.forEach(
         (key, values) => values.forEach((value) => to.add(key, value)));
@@ -887,8 +888,9 @@ class _SimpleHeaders implements HttpHeaders {
   String value(String name) {
     final items = _headers[name.toLowerCase()];
     if (items == null || items.isEmpty) return null;
-    if (items.length > 1)
+    if (items.length > 1) {
       throw HttpException('More than one value for header $name');
+    }
     return items[0];
   }
 }

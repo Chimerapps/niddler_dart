@@ -80,8 +80,9 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
     switch (messageType) {
       case _MESSAGE_ACTIVATE:
         _configuration.isActive = true;
-        if (!_connectionCompleter.isCompleted)
+        if (!_connectionCompleter.isCompleted) {
           _connectionCompleter.complete(true);
+        }
         break;
       case _MESSAGE_DEACTIVATE:
         _configuration.isActive = false;
@@ -269,10 +270,12 @@ class _DebugRequestOverrideAction extends _RequestOverrideAction {
       NiddlerRequest request, NiddlerDebuggerImpl debugger) {
     if (!active) return Future.value(null);
 
-    if (_regex != null && !_regex.hasMatch(request.url))
+    if (_regex != null && !_regex.hasMatch(request.url)) {
       return Future.value(null);
-    if (_method != null && _method != request.method?.toLowerCase())
+    }
+    if (_method != null && _method != request.method?.toLowerCase()) {
       return Future.value(null);
+    }
 
     return debugger.sendHandleRequestOverride(request);
   }
@@ -294,12 +297,15 @@ class _DebugResponseOverrideAction extends _ResponseOverrideAction {
       NiddlerResponse response, NiddlerDebuggerImpl debugger) {
     if (!active) return Future.value(null);
 
-    if (_regex != null && !_regex.hasMatch(request.url))
+    if (_regex != null && !_regex.hasMatch(request.url)) {
       return Future.value(null);
-    if (_method != null && _method != request.method?.toLowerCase())
+    }
+    if (_method != null && _method != request.method?.toLowerCase()) {
       return Future.value(null);
-    if (_responseCode != null && _responseCode != response.statusCode)
+    }
+    if (_responseCode != null && _responseCode != response.statusCode) {
       return Future.value(null);
+    }
 
     return debugger.sendHandleResponseOverride(request, response);
   }
