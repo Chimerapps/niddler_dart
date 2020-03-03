@@ -66,7 +66,8 @@ abstract class NiddlerDebugger {
 
   Future<DebugRequest> overrideRequest(NiddlerRequest request);
 
-  Future<DebugResponse> overrideResponse(NiddlerRequest request, NiddlerResponse response);
+  Future<DebugResponse> overrideResponse(
+      NiddlerRequest request, NiddlerResponse response);
 }
 
 class DebugRequest {

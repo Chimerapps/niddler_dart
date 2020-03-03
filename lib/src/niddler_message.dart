@@ -24,7 +24,8 @@ abstract class NiddlerMessageBase {
   String body;
 
   /// Constructor
-  NiddlerMessageBase(this.messageId, this.requestId, this.timeStamp, this.headers);
+  NiddlerMessageBase(
+      this.messageId, this.requestId, this.timeStamp, this.headers);
 
   /// Updates the given (json) data with the values stored in this instance
   void updateJson(Map<String, dynamic> jsonData) {

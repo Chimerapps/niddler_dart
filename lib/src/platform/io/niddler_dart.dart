@@ -17,7 +17,8 @@ class NiddlerHttpOverrides extends HttpOverrides {
   final StackTraceSanitizer _sanitizer;
   final bool includeStackTraces;
 
-  NiddlerHttpOverrides(this._niddler, this._sanitizer, {this.includeStackTraces});
+  NiddlerHttpOverrides(this._niddler, this._sanitizer,
+      {this.includeStackTraces});
 
   @override
   HttpClient createHttpClient(SecurityContext context) {
@@ -59,7 +60,8 @@ class _NiddlerHttpClient implements HttpClient {
   int get maxConnectionsPerHost => _delegate.maxConnectionsPerHost;
 
   @override
-  set maxConnectionsPerHost(int value) => _delegate.maxConnectionsPerHost = value;
+  set maxConnectionsPerHost(int value) =>
+      _delegate.maxConnectionsPerHost = value;
 
   @override
   String get userAgent => _delegate.userAgent;
@@ -67,26 +69,40 @@ class _NiddlerHttpClient implements HttpClient {
   @override
   set userAgent(String value) => _delegate.userAgent = value;
 
-  _NiddlerHttpClient(this._delegate, this._niddler, this._sanitizer, {this.includeStackTraces}) : _debugger = _niddler.debugger;
+  _NiddlerHttpClient(this._delegate, this._niddler, this._sanitizer,
+      {this.includeStackTraces})
+      : _debugger = _niddler.debugger;
 
   @override
-  void addCredentials(Uri url, String realm, HttpClientCredentials credentials) => _delegate.addCredentials(url, realm, credentials);
+  void addCredentials(
+          Uri url, String realm, HttpClientCredentials credentials) =>
+      _delegate.addCredentials(url, realm, credentials);
 
   @override
-  void addProxyCredentials(String host, int port, String realm, HttpClientCredentials credentials) =>
+  void addProxyCredentials(String host, int port, String realm,
+          HttpClientCredentials credentials) =>
       _delegate.addProxyCredentials(host, port, realm, credentials);
 
   @override
   // ignore: avoid_setters_without_getters
-  set authenticate(Future<bool> Function(Uri url, String scheme, String realm) f) => _delegate.authenticate = f;
+  set authenticate(
+          Future<bool> Function(Uri url, String scheme, String realm) f) =>
+      _delegate.authenticate = f;
 
   @override
   // ignore: avoid_setters_without_getters
-  set authenticateProxy(Future<bool> Function(String host, int port, String scheme, String realm) f) => _delegate.authenticateProxy = f;
+  set authenticateProxy(
+          Future<bool> Function(
+                  String host, int port, String scheme, String realm)
+              f) =>
+      _delegate.authenticateProxy = f;
 
   @override
   // ignore: avoid_setters_without_getters
-  set badCertificateCallback(bool Function(X509Certificate cert, String host, int port) callback) => _delegate.badCertificateCallback = callback;
+  set badCertificateCallback(
+          bool Function(X509Certificate cert, String host, int port)
+              callback) =>
+      _delegate.badCertificateCallback = callback;
 
   @override
   void close({bool force = false}) => _delegate.close(force: force);
@@ -132,7 +148,8 @@ class _NiddlerHttpClient implements HttpClient {
   }
 
   @override
-  Future<HttpClientRequest> open(String method, String host, int port, String path) {
+  Future<HttpClientRequest> open(
+      String method, String host, int port, String path) {
     final openRequest = _delegate.open(method, host, port, path);
     return openRequest;
   }
@@ -143,7 +160,9 @@ class _NiddlerHttpClient implements HttpClient {
       return _delegate.openUrl(method, url);
     }
 
-    return Future.value(_NiddlerHttpClientRequest(url, method, _delegate, _niddler, Uuid().v4(), _sanitizer, includeStackTraces: includeStackTraces));
+    return Future.value(_NiddlerHttpClientRequest(
+        url, method, _delegate, _niddler, Uuid().v4(), _sanitizer,
+        includeStackTraces: includeStackTraces));
   }
 
   @override
@@ -238,7 +257,10 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     StackTraceSanitizer sanitizer, {
     bool includeStackTraces = false,
   }) : _stackTraces = includeStackTraces
-            ? _expandWithGaps(Chain.current().traces.map((trace) => _filterFrames(trace, sanitizer)).where((trace) => trace.frames.isNotEmpty)).toList()
+            ? _expandWithGaps(Chain.current()
+                .traces
+                .map((trace) => _filterFrames(trace, sanitizer))
+                .where((trace) => trace.frames.isNotEmpty)).toList()
             : null;
 
   @override
@@ -248,7 +270,8 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   }
 
   @override
-  void addError(Object error, [StackTrace stackTrace]) => _executingRequest.addError(error, stackTrace);
+  void addError(Object error, [StackTrace stackTrace]) =>
+      _executingRequest.addError(error, stackTrace);
 
   @override
   Future addStream(Stream<List<int>> stream) {
@@ -281,18 +304,21 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
           _originalRequest.body = const Base64Codec.urlSafe().encode(bodyBytes);
         }
       }
-      final overriddenRequest = await _niddler.debugger.overrideRequest(_originalRequest);
+      final overriddenRequest =
+          await _niddler.debugger.overrideRequest(_originalRequest);
       if (overriddenRequest != null) {
         final newUri = Uri.parse(overriddenRequest.url);
-        request = await _delegateClient.openUrl(overriddenRequest.method, newUri)
-          ..bufferOutput = bufferOutput;
+        request =
+            await _delegateClient.openUrl(overriddenRequest.method, newUri)
+              ..bufferOutput = bufferOutput;
 
-        overriddenRequest.headers.forEach((key, values) => request.headers.add(key, values));
+        overriddenRequest.headers
+            .forEach((key, values) => request.headers.add(key, values));
         request
           ..persistentConnection = persistentConnection
           ..followRedirects = followRedirects
-          ..maxRedirects = maxRedirects
-          ..cookies.addAll(cookies);
+          ..maxRedirects = maxRedirects;
+        //Cookies are added automatically by request object based on headers
 
         executingRequest = NiddlerRequest(
           url: overriddenRequest.url,
@@ -306,7 +332,8 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
         executingRequest.headers.addAll(overriddenRequest.headers);
 
         if (overriddenRequest.encodedBody != null) {
-          final decoded = const Base64Codec.urlSafe().decode(overriddenRequest.encodedBody);
+          final decoded =
+              const Base64Codec.urlSafe().decode(overriddenRequest.encodedBody);
           request
             ..contentLength = decoded.length
             ..add(decoded);
@@ -334,14 +361,21 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     _niddler.logRequestJson(stringData);
 
     final connectionHeader = executingRequest.headers['connection'];
-    if (connectionHeader != null && connectionHeader.firstWhere((element) => element.toLowerCase() == 'upgrade') != null) return request.close();
+    if (connectionHeader != null &&
+        connectionHeader
+                .firstWhere((element) => element.toLowerCase() == 'upgrade') !=
+            null) return request.close();
 
-    return request.close().then((response) => _handleResponse(_originalRequest, response));
+    return request
+        .close()
+        .then((response) => _handleResponse(_originalRequest, response));
   }
 
-  Future<HttpClientResponse> _handleResponse(NiddlerRequest request, HttpClientResponse originalResponse) {
+  Future<HttpClientResponse> _handleResponse(
+      NiddlerRequest request, HttpClientResponse originalResponse) {
     final responseHeaders = Map<String, List<String>>();
-    originalResponse.headers.forEach((key, value) => responseHeaders[key] = value);
+    originalResponse.headers
+        .forEach((key, value) => responseHeaders[key] = value);
     final initialNiddlerResponse = NiddlerResponse(
       statusCode: originalResponse.statusCode,
       statusLine: originalResponse.reasonPhrase,
@@ -356,31 +390,45 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     );
 
     return originalResponse.toList().then((bodyBytes) {
-      if (!_niddler.debugger.isActive) return _handleDefaultResponse(initialNiddlerResponse, originalResponse, bodyBytes);
+      if (!_niddler.debugger.isActive)
+        return _handleDefaultResponse(
+            initialNiddlerResponse, originalResponse, bodyBytes);
 
-      return _handleResponseWithDebugger(request, initialNiddlerResponse, originalResponse, bodyBytes);
+      return _handleResponseWithDebugger(
+          request, initialNiddlerResponse, originalResponse, bodyBytes);
     });
   }
 
   Future<HttpClientResponse> _handleResponseWithDebugger(
-      NiddlerRequest request, NiddlerResponse initialNiddlerResponse, HttpClientResponse originalResponse, List<List<int>> bodyBytes) async {
+      NiddlerRequest request,
+      NiddlerResponse initialNiddlerResponse,
+      HttpClientResponse originalResponse,
+      List<List<int>> bodyBytes) async {
     //TODO optimize for speed
     if (bodyBytes != null && bodyBytes.isNotEmpty) {
       final mappedBodyBytes = List<int>();
       bodyBytes.forEach(mappedBodyBytes.addAll);
       if (bodyBytes.isNotEmpty) {
-        initialNiddlerResponse.body = const Base64Codec.urlSafe().encode(mappedBodyBytes);
+        initialNiddlerResponse.body =
+            const Base64Codec.urlSafe().encode(mappedBodyBytes);
       }
     }
 
-    final debuggerResponse = await _niddler.debugger.overrideResponse(request, initialNiddlerResponse);
-    if (debuggerResponse == null) return _handleDefaultResponse(initialNiddlerResponse, originalResponse, bodyBytes);
+    final debuggerResponse = await _niddler.debugger
+        .overrideResponse(request, initialNiddlerResponse);
+    if (debuggerResponse == null)
+      return _handleDefaultResponse(
+          initialNiddlerResponse, originalResponse, bodyBytes);
 
     final newHeaders = _SimpleHeaders()
       ..host = originalResponse.headers.host
       ..port = originalResponse.headers.port;
-    debuggerResponse.headers.forEach((key, values) => values.forEach((value) => newHeaders.add(key, value)));
-    final cookies = newHeaders['set-cookie']?.map((value) => Cookie.fromSetCookieValue(value))?.toList() ?? List();
+    debuggerResponse.headers.forEach(
+        (key, values) => values.forEach((value) => newHeaders.add(key, value)));
+    final cookies = newHeaders['set-cookie']
+            ?.map((value) => Cookie.fromSetCookieValue(value))
+            ?.toList() ??
+        List();
 
     final changedNiddlerResponse = NiddlerResponse(
       statusCode: debuggerResponse.code,
@@ -396,7 +444,9 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     );
     List<List<int>> newBody;
     if (debuggerResponse.encodedBody != null) {
-      newBody = [const Base64Codec.urlSafe().decode(debuggerResponse.encodedBody)];
+      newBody = [
+        const Base64Codec.urlSafe().decode(debuggerResponse.encodedBody)
+      ];
     }
 
     final stringMessage = await _encodeBody(changedNiddlerResponse, newBody);
@@ -417,9 +467,11 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     HttpClientResponse originalResponse,
     List<List<int>> bodyBytes,
   ) {
-    _encodeBody(initialNiddlerResponse, bodyBytes).then(_niddler.logResponseJson);
+    _encodeBody(initialNiddlerResponse, bodyBytes)
+        .then(_niddler.logResponseJson);
 
-    return Future.value(_NiddlerHttpClientResponseWrapper(originalResponse, bodyBytes));
+    return Future.value(
+        _NiddlerHttpClientResponseWrapper(originalResponse, bodyBytes));
   }
 
   @override
@@ -458,7 +510,8 @@ void _encodeBodyJson(_IsolateData body) {
   body.dataPort.send(body.message.toJsonString());
 }
 
-Future<String> _encodeBody(NiddlerMessageBase message, List<List<int>> bytes) async {
+Future<String> _encodeBody(
+    NiddlerMessageBase message, List<List<int>> bytes) async {
   final resultPort = ReceivePort();
   final errorPort = ReceivePort();
   final isolate = await Isolate.spawn(
@@ -502,7 +555,9 @@ Iterable<String> _expandWithGaps(Iterable<Trace> source) {
   final length = source.length;
   var index = 0;
   return source.expand((trace) {
-    final list = trace.frames.map((frame) => '${frame.location} ${frame.member}').toList();
+    final list = trace.frames
+        .map((frame) => '${frame.location} ${frame.member}')
+        .toList();
     if (++index < length) {
       list.add('<async gap>');
     }
@@ -510,7 +565,8 @@ Iterable<String> _expandWithGaps(Iterable<Trace> source) {
   });
 }
 
-class _NiddlerHttpClientResponseWrapper extends _NiddlerHttpClientResponseStreamBase {
+class _NiddlerHttpClientResponseWrapper
+    extends _NiddlerHttpClientResponseStreamBase {
   final HttpClientResponse _originalResponse;
   final List<Cookie> overrideCookies;
   final HttpHeaders overrideHeaders;
@@ -530,13 +586,15 @@ class _NiddlerHttpClientResponseWrapper extends _NiddlerHttpClientResponseStream
   X509Certificate get certificate => _originalResponse.certificate;
 
   @override
-  HttpClientResponseCompressionState get compressionState => _originalResponse.compressionState;
+  HttpClientResponseCompressionState get compressionState =>
+      _originalResponse.compressionState;
 
   @override
   HttpConnectionInfo get connectionInfo => _originalResponse.connectionInfo;
 
   @override
-  int get contentLength => _originalResponse.contentLength; //Due to decompressed flag, this can be -1
+  int get contentLength => _originalResponse
+      .contentLength; //Due to decompressed flag, this can be -1
 
   @override
   List<Cookie> get cookies => overrideCookies ?? _originalResponse.cookies;
@@ -560,10 +618,12 @@ class _NiddlerHttpClientResponseWrapper extends _NiddlerHttpClientResponseStream
   bool get persistentConnection => _originalResponse.persistentConnection;
 
   @override
-  String get reasonPhrase => overrideReasonPhrase ?? _originalResponse.reasonPhrase;
+  String get reasonPhrase =>
+      overrideReasonPhrase ?? _originalResponse.reasonPhrase;
 
   @override
-  Future<HttpClientResponse> redirect([String method, Uri url, bool followLoops]) {
+  Future<HttpClientResponse> redirect(
+      [String method, Uri url, bool followLoops]) {
     return _originalResponse.redirect(method, url, followLoops);
   }
 
@@ -574,13 +634,17 @@ class _NiddlerHttpClientResponseWrapper extends _NiddlerHttpClientResponseStream
   int get statusCode => overrideStatusCode ?? _originalResponse.statusCode;
 }
 
-abstract class _NiddlerHttpClientResponseStreamBase implements HttpClientResponse {
+abstract class _NiddlerHttpClientResponseStreamBase
+    implements HttpClientResponse {
   final Stream<List<int>> _bodyStream;
 
-  _NiddlerHttpClientResponseStreamBase(List<List<int>> data) : _bodyStream = data == null ? const Stream.empty() : Stream.fromIterable(data);
+  _NiddlerHttpClientResponseStreamBase(List<List<int>> data)
+      : _bodyStream =
+            data == null ? const Stream.empty() : Stream.fromIterable(data);
 
   @override
-  Future<bool> any(bool Function(List<int> element) test) => _bodyStream.any(test);
+  Future<bool> any(bool Function(List<int> element) test) =>
+      _bodyStream.any(test);
 
   @override
   Stream<List<int>> asBroadcastStream({
@@ -593,10 +657,12 @@ abstract class _NiddlerHttpClientResponseStreamBase implements HttpClientRespons
       );
 
   @override
-  Stream<E> asyncExpand<E>(Stream<E> Function(List<int> event) convert) => _bodyStream.asyncExpand(convert);
+  Stream<E> asyncExpand<E>(Stream<E> Function(List<int> event) convert) =>
+      _bodyStream.asyncExpand(convert);
 
   @override
-  Stream<E> asyncMap<E>(FutureOr<E> Function(List<int> event) convert) => _bodyStream.asyncMap(convert);
+  Stream<E> asyncMap<E>(FutureOr<E> Function(List<int> event) convert) =>
+      _bodyStream.asyncMap(convert);
 
   @override
   Stream<R> cast<R>() => _bodyStream.cast();
@@ -605,7 +671,9 @@ abstract class _NiddlerHttpClientResponseStreamBase implements HttpClientRespons
   Future<bool> contains(Object needle) => _bodyStream.contains(needle);
 
   @override
-  Stream<List<int>> distinct([bool Function(List<int> previous, List<int> next) equals]) => _bodyStream.distinct(equals);
+  Stream<List<int>> distinct(
+          [bool Function(List<int> previous, List<int> next) equals]) =>
+      _bodyStream.distinct(equals);
 
   @override
   Future<E> drain<E>([E futureValue]) => _bodyStream.drain(futureValue);
@@ -614,22 +682,29 @@ abstract class _NiddlerHttpClientResponseStreamBase implements HttpClientRespons
   Future<List<int>> elementAt(int index) => _bodyStream.elementAt(index);
 
   @override
-  Future<bool> every(bool Function(List<int> element) test) => _bodyStream.every(test);
+  Future<bool> every(bool Function(List<int> element) test) =>
+      _bodyStream.every(test);
 
   @override
-  Stream<S> expand<S>(Iterable<S> Function(List<int> element) convert) => _bodyStream.expand(convert);
+  Stream<S> expand<S>(Iterable<S> Function(List<int> element) convert) =>
+      _bodyStream.expand(convert);
 
   @override
   Future<List<int>> get first => _bodyStream.first;
 
   @override
-  Future<List<int>> firstWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _bodyStream.firstWhere(test, orElse: orElse);
+  Future<List<int>> firstWhere(bool Function(List<int> element) test,
+          {List<int> Function() orElse}) =>
+      _bodyStream.firstWhere(test, orElse: orElse);
 
   @override
-  Future<S> fold<S>(S initialValue, S Function(S previous, List<int> element) combine) => _bodyStream.fold(initialValue, combine);
+  Future<S> fold<S>(
+          S initialValue, S Function(S previous, List<int> element) combine) =>
+      _bodyStream.fold(initialValue, combine);
 
   @override
-  Future forEach(void Function(List<int> element) action) => _bodyStream.forEach(action);
+  Future forEach(void Function(List<int> element) action) =>
+      _bodyStream.forEach(action);
 
   @override
   Stream<List<int>> handleError(
@@ -651,45 +726,59 @@ abstract class _NiddlerHttpClientResponseStreamBase implements HttpClientRespons
   Future<List<int>> get last => _bodyStream.last;
 
   @override
-  Future<List<int>> lastWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _bodyStream.lastWhere(test, orElse: orElse);
+  Future<List<int>> lastWhere(bool Function(List<int> element) test,
+          {List<int> Function() orElse}) =>
+      _bodyStream.lastWhere(test, orElse: orElse);
 
   @override
   Future<int> get length => _bodyStream.length;
 
   @override
-  StreamSubscription<List<int>> listen(void Function(List<int> event) onData, {Function onError, void Function() onDone, bool cancelOnError}) {
-    return _bodyStream.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  StreamSubscription<List<int>> listen(void Function(List<int> event) onData,
+      {Function onError, void Function() onDone, bool cancelOnError}) {
+    return _bodyStream.listen(onData,
+        onError: onError, onDone: onDone, cancelOnError: cancelOnError);
   }
 
   @override
-  Stream<S> map<S>(S Function(List<int> event) convert) => _bodyStream.map(convert);
+  Stream<S> map<S>(S Function(List<int> event) convert) =>
+      _bodyStream.map(convert);
 
   @override
-  Future pipe(StreamConsumer<List<int>> streamConsumer) => _bodyStream.pipe(streamConsumer);
+  Future pipe(StreamConsumer<List<int>> streamConsumer) =>
+      _bodyStream.pipe(streamConsumer);
 
   @override
-  Future<List<int>> reduce(List<int> Function(List<int> previous, List<int> element) combine) => _bodyStream.reduce(combine);
+  Future<List<int>> reduce(
+          List<int> Function(List<int> previous, List<int> element) combine) =>
+      _bodyStream.reduce(combine);
 
   @override
   Future<List<int>> get single => _bodyStream.single;
 
   @override
-  Future<List<int>> singleWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _bodyStream.singleWhere(test, orElse: orElse);
+  Future<List<int>> singleWhere(bool Function(List<int> element) test,
+          {List<int> Function() orElse}) =>
+      _bodyStream.singleWhere(test, orElse: orElse);
 
   @override
   Stream<List<int>> skip(int count) => _bodyStream.skip(count);
 
   @override
-  Stream<List<int>> skipWhile(bool Function(List<int> element) test) => _bodyStream.skipWhile(test);
+  Stream<List<int>> skipWhile(bool Function(List<int> element) test) =>
+      _bodyStream.skipWhile(test);
 
   @override
   Stream<List<int>> take(int count) => _bodyStream.take(count);
 
   @override
-  Stream<List<int>> takeWhile(bool Function(List<int> element) test) => _bodyStream.takeWhile(test);
+  Stream<List<int>> takeWhile(bool Function(List<int> element) test) =>
+      _bodyStream.takeWhile(test);
 
   @override
-  Stream<List<int>> timeout(Duration timeLimit, {void Function(EventSink<List<int>> sink) onTimeout}) => _bodyStream.timeout(timeLimit, onTimeout: onTimeout);
+  Stream<List<int>> timeout(Duration timeLimit,
+          {void Function(EventSink<List<int>> sink) onTimeout}) =>
+      _bodyStream.timeout(timeLimit, onTimeout: onTimeout);
 
   @override
   Future<List<List<int>>> toList() => _bodyStream.toList();
@@ -698,10 +787,12 @@ abstract class _NiddlerHttpClientResponseStreamBase implements HttpClientRespons
   Future<Set<List<int>>> toSet() => _bodyStream.toSet();
 
   @override
-  Stream<S> transform<S>(StreamTransformer<List<int>, S> streamTransformer) => _bodyStream.transform(streamTransformer);
+  Stream<S> transform<S>(StreamTransformer<List<int>, S> streamTransformer) =>
+      _bodyStream.transform(streamTransformer);
 
   @override
-  Stream<List<int>> where(bool Function(List<int> event) test) => _bodyStream.where(test);
+  Stream<List<int>> where(bool Function(List<int> event) test) =>
+      _bodyStream.where(test);
 }
 
 class _SimpleHeaders implements HttpHeaders {
@@ -744,9 +835,11 @@ class _SimpleHeaders implements HttpHeaders {
     if (date != null) to.date = date;
     if (expires != null) to.expires = expires;
     if (ifModifiedSince != null) to.ifModifiedSince = ifModifiedSince;
-    if (persistentConnection != null) to.persistentConnection = persistentConnection;
+    if (persistentConnection != null)
+      to.persistentConnection = persistentConnection;
 
-    _headers.forEach((key, values) => values.forEach((value) => to.add(key, value)));
+    _headers.forEach(
+        (key, values) => values.forEach((value) => to.add(key, value)));
     _noFolding.forEach((noFold) => to.noFolding(noFold));
   }
 
@@ -794,7 +887,8 @@ class _SimpleHeaders implements HttpHeaders {
   String value(String name) {
     final items = _headers[name.toLowerCase()];
     if (items == null || items.isEmpty) return null;
-    if (items.length > 1) throw HttpException('More than one value for header $name');
+    if (items.length > 1)
+      throw HttpException('More than one value for header $name');
     return items[0];
   }
 }

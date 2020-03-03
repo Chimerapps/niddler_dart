@@ -8,9 +8,11 @@ Future<void> main() async {
   await Chain.capture(() async {
     final niddlerBuilder = NiddlerBuilder()
       ..bundleId = 'com.test.test'
-      ..serverInfo = NiddlerServerInfo('Some descriptive name', 'Some description')
+      ..serverInfo =
+          NiddlerServerInfo('Some descriptive name', 'Some description')
       ..includeStackTrace = true
-      ..port = 0; //0 to have niddler pick it's own port. Automatic discovery will make this visible
+      ..port =
+          0; //0 to have niddler pick it's own port. Automatic discovery will make this visible
 
     final niddler = niddlerBuilder.build()..addBlacklist(RegExp('.*/get'));
     await niddler.start();
@@ -53,17 +55,20 @@ Future<void> executePost1() async {
       {'nested': 'nestedData'}
     ]
   };
-  final response = await http.post('http://httpbin.org/post', body: json.encode(value), headers: {'content-type': 'application/json'});
+  final response = await http.post('http://httpbin.org/post',
+      body: json.encode(value), headers: {'content-type': 'application/json'});
   print('Post body: ${response.body}');
 }
 
 Future<void> executeGet() async {
-  final response2 = await http.get('http://httpbin.org/get', headers: {'content-type': 'application/json'});
+  final response2 = await http.get('http://httpbin.org/get',
+      headers: {'content-type': 'application/json'});
   print('Get body (blacklisted): ${response2.body}');
 }
 
 Future<void> executePost2() async {
-  await http.post('http://httpbin.org/post', body: {'user': 'example@example.com', 'password': 'superSecretPassword'});
+  await http.post('http://httpbin.org/post',
+      body: {'user': 'example@example.com', 'password': 'superSecretPassword'});
 }
 
 Future<void> getImage() async {
