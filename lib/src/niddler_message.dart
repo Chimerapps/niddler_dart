@@ -47,6 +47,7 @@ class NiddlerRequest extends NiddlerMessageBase {
   /// The method of this request, can be a HTTP method or something else that describes your request (eg in websockets)
   final String method;
 
+  /// The stack traces of the call site that started the request. Can be null if not enabled
   final List<String> stackTraces;
 
   /// Constructor
@@ -105,6 +106,8 @@ class NiddlerResponse extends NiddlerMessageBase {
 
   /// The time spent waiting for the first data to become available. If unknown, set to -1
   final int waitTime;
+
+  String _jsonStringCache;
 
   /// Constructor
   NiddlerResponse({

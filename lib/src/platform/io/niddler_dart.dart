@@ -291,19 +291,11 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     );
     headers.forEach((key, values) => _originalRequest.headers[key] = values);
 
-    //TODO optimize for speeeeeed
     HttpClientRequest request;
     var executingRequest = _originalRequest;
     if (_niddler.debugger.isActive) {
-      if (requestBodyBytes != null && requestBodyBytes.isNotEmpty) {
-        final bodyBytes = List<int>();
-        requestBodyBytes.forEach(bodyBytes.addAll);
-        if (bodyBytes.isNotEmpty) {
-          _originalRequest.body = const Base64Codec.urlSafe().encode(bodyBytes);
-        }
-      }
-      final overriddenRequest =
-          await _niddler.debugger.overrideRequest(_originalRequest);
+      final overriddenRequest = await _niddler.debugger
+          .overrideRequest(_originalRequest, requestBodyBytes);
       if (overriddenRequest != null) {
         final newUri = Uri.parse(overriddenRequest.url);
         request =
@@ -403,18 +395,8 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       NiddlerResponse initialNiddlerResponse,
       HttpClientResponse originalResponse,
       List<List<int>> bodyBytes) async {
-    //TODO optimize for speed
-    if (bodyBytes != null && bodyBytes.isNotEmpty) {
-      final mappedBodyBytes = List<int>();
-      bodyBytes.forEach(mappedBodyBytes.addAll);
-      if (bodyBytes.isNotEmpty) {
-        initialNiddlerResponse.body =
-            const Base64Codec.urlSafe().encode(mappedBodyBytes);
-      }
-    }
-
     final debuggerResponse = await _niddler.debugger
-        .overrideResponse(request, initialNiddlerResponse);
+        .overrideResponse(request, initialNiddlerResponse, bodyBytes);
     if (debuggerResponse == null) {
       return _handleDefaultResponse(
           initialNiddlerResponse, originalResponse, bodyBytes);

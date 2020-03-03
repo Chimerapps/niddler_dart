@@ -33,18 +33,23 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
   }
 
   @override
-  Future<DebugRequest> overrideRequest(NiddlerRequest request) {
+  Future<DebugRequest> overrideRequest(
+      NiddlerRequest request, List<List<int>> nonSerializedBody) {
     if (!isActive || _currentConnection == null) return Future.value(null);
 
-    return _configuration.overrideRequest(request);
+    return _configuration.overrideRequest(request, nonSerializedBody);
   }
 
   @override
   Future<DebugResponse> overrideResponse(
-      NiddlerRequest request, NiddlerResponse response) {
+    NiddlerRequest request,
+    NiddlerResponse response,
+    List<List<int>> nonSerializedBody,
+  ) {
     if (!isActive || _currentConnection == null) return Future.value(null);
 
-    return _configuration.overrideResponse(request, response);
+    return _configuration.overrideResponse(
+        request, response, nonSerializedBody);
   }
 
   void onDebuggerAttached(NiddlerConnection niddlerConnection) {
@@ -182,7 +187,7 @@ class _NiddlerDebuggerConfiguration {
     final completer = Completer<DebugRequest>();
     _waitingRequests[request.messageId] = completer;
 
-    //TODO isolate
+    //TODO isolate json encoding
     final jsonEnvelope = Map<String, dynamic>();
     jsonEnvelope['type'] = 'debugRequest';
     jsonEnvelope['request'] = request.toJson();
@@ -199,7 +204,7 @@ class _NiddlerDebuggerConfiguration {
     final completer = Completer<DebugResponse>();
     _waitingResponses[request.messageId] = completer;
 
-    //TODO isolate
+    //TODO isolate json encoding
     final jsonEnvelope = Map<String, dynamic>();
     jsonEnvelope['type'] = 'debugRequest';
     jsonEnvelope['requestId'] = request.messageId;
@@ -221,11 +226,13 @@ class _NiddlerDebuggerConfiguration {
     _waitingRequests.remove(messageId)?.complete(debugRequest);
   }
 
-  Future<DebugRequest> overrideRequest(NiddlerRequest request) {
+  Future<DebugRequest> overrideRequest(
+      NiddlerRequest request, List<List<int>> nonSerializedBody) {
     Future<DebugRequest> result;
     _requestOverrides.forEach((handler) {
       if (result != null) return;
-      final future = handler.handleRequest(request, _debugger);
+      final future =
+          handler.handleRequest(request, nonSerializedBody, _debugger);
       if (future != null) {
         result = future;
       }
@@ -233,12 +240,13 @@ class _NiddlerDebuggerConfiguration {
     return result ?? Future.value(null);
   }
 
-  Future<DebugResponse> overrideResponse(
-      NiddlerRequest request, NiddlerResponse response) {
+  Future<DebugResponse> overrideResponse(NiddlerRequest request,
+      NiddlerResponse response, List<List<int>> nonSerializedBody) {
     Future<DebugResponse> result;
     _responseOverrides.forEach((handler) {
       if (result != null) return;
-      final future = handler.handleRequest(request, response, _debugger);
+      final future = handler.handleRequest(
+          request, response, nonSerializedBody, _debugger);
       if (future != null) {
         result = future;
       }
@@ -267,7 +275,10 @@ class _DebugRequestOverrideAction extends _RequestOverrideAction {
 
   @override
   Future<DebugRequest> handleRequest(
-      NiddlerRequest request, NiddlerDebuggerImpl debugger) {
+    NiddlerRequest request,
+    List<List<int>> nonSerializedBody,
+    NiddlerDebuggerImpl debugger,
+  ) {
     if (!active) return Future.value(null);
 
     if (_regex != null && !_regex.hasMatch(request.url)) {
@@ -277,6 +288,7 @@ class _DebugRequestOverrideAction extends _RequestOverrideAction {
       return Future.value(null);
     }
 
+    _serializeBodyIfRequired(request, nonSerializedBody);
     return debugger.sendHandleRequestOverride(request);
   }
 }
@@ -293,8 +305,12 @@ class _DebugResponseOverrideAction extends _ResponseOverrideAction {
         super(json);
 
   @override
-  Future<DebugResponse> handleRequest(NiddlerRequest request,
-      NiddlerResponse response, NiddlerDebuggerImpl debugger) {
+  Future<DebugResponse> handleRequest(
+    NiddlerRequest request,
+    NiddlerResponse response,
+    List<List<int>> nonSerializedBody,
+    NiddlerDebuggerImpl debugger,
+  ) {
     if (!active) return Future.value(null);
 
     if (_regex != null && !_regex.hasMatch(request.url)) {
@@ -307,6 +323,7 @@ class _DebugResponseOverrideAction extends _ResponseOverrideAction {
       return Future.value(null);
     }
 
+    _serializeBodyIfRequired(response, nonSerializedBody);
     return debugger.sendHandleResponseOverride(request, response);
   }
 }
@@ -315,14 +332,21 @@ abstract class _RequestOverrideAction extends _DebugAction {
   _RequestOverrideAction(json) : super(json);
 
   Future<DebugRequest> handleRequest(
-      final NiddlerRequest request, final NiddlerDebuggerImpl debugger);
+    final NiddlerRequest request,
+    List<List<int>> nonSerializedBody,
+    final NiddlerDebuggerImpl debugger,
+  );
 }
 
 abstract class _ResponseOverrideAction extends _DebugAction {
   _ResponseOverrideAction(json) : super(json);
 
-  Future<DebugResponse> handleRequest(final NiddlerRequest request,
-      final NiddlerResponse response, final NiddlerDebuggerImpl debugger);
+  Future<DebugResponse> handleRequest(
+    final NiddlerRequest request,
+    final NiddlerResponse response,
+    List<List<int>> nonSerializedBody,
+    final NiddlerDebuggerImpl debugger,
+  );
 }
 
 abstract class _DebugAction {
@@ -332,4 +356,16 @@ abstract class _DebugAction {
   _DebugAction(json)
       : id = json['id'],
         active = json['active'];
+}
+
+//TODO performance?
+void _serializeBodyIfRequired(
+    NiddlerMessageBase message, List<List<int>> bodyBytes) {
+  if (message.body == null && bodyBytes != null && bodyBytes.isNotEmpty) {
+    final mappedBodyBytes = List<int>();
+    bodyBytes.forEach(mappedBodyBytes.addAll);
+    if (mappedBodyBytes.isNotEmpty) {
+      message.body = const Base64Codec.urlSafe().encode(mappedBodyBytes);
+    }
+  }
 }
