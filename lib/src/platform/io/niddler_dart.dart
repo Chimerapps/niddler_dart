@@ -481,8 +481,19 @@ Iterable<String> _expandWithGaps(Iterable<Trace> source) {
 
 class _NiddlerHttpClientResponseWrapper extends _NiddlerHttpClientResponseStreamBase {
   final HttpClientResponse _originalResponse;
+  final List<Cookie> overrideCookies;
+  final HttpHeaders overrideHeaders;
+  final String overrideReasonPhrase;
+  final int overrideStatusCode;
 
-  _NiddlerHttpClientResponseWrapper(this._originalResponse, List<List<int>> body) : super(body);
+  _NiddlerHttpClientResponseWrapper(
+    this._originalResponse,
+    List<List<int>> body, {
+    this.overrideCookies,
+    this.overrideHeaders,
+    this.overrideReasonPhrase,
+    this.overrideStatusCode,
+  }) : super(body);
 
   @override
   X509Certificate get certificate => _originalResponse.certificate;
@@ -497,22 +508,28 @@ class _NiddlerHttpClientResponseWrapper extends _NiddlerHttpClientResponseStream
   int get contentLength => -1; //Due to decompressed flag, this can be -1
 
   @override
-  List<Cookie> get cookies => _originalResponse.cookies;
+  List<Cookie> get cookies => overrideCookies ?? _originalResponse.cookies;
 
   @override
   Future<Socket> detachSocket() => _originalResponse.detachSocket();
 
   @override
-  HttpHeaders get headers => _originalResponse.headers;
+  HttpHeaders get headers => overrideHeaders ?? _originalResponse.headers;
 
   @override
-  bool get isRedirect => _originalResponse.isRedirect;
+  bool get isRedirect => (overrideStatusCode == null)
+      ? _originalResponse.isRedirect
+      : (overrideStatusCode == HttpStatus.movedPermanently ||
+          overrideStatusCode == HttpStatus.found ||
+          overrideStatusCode == HttpStatus.movedTemporarily ||
+          overrideStatusCode == HttpStatus.seeOther ||
+          overrideStatusCode == HttpStatus.temporaryRedirect);
 
   @override
   bool get persistentConnection => _originalResponse.persistentConnection;
 
   @override
-  String get reasonPhrase => _originalResponse.reasonPhrase;
+  String get reasonPhrase => overrideReasonPhrase ?? _originalResponse.reasonPhrase;
 
   @override
   Future<HttpClientResponse> redirect([String method, Uri url, bool followLoops]) {
@@ -523,7 +540,7 @@ class _NiddlerHttpClientResponseWrapper extends _NiddlerHttpClientResponseStream
   List<RedirectInfo> get redirects => _originalResponse.redirects;
 
   @override
-  int get statusCode => _originalResponse.statusCode;
+  int get statusCode => overrideStatusCode ?? _originalResponse.statusCode;
 }
 
 abstract class _NiddlerHttpClientResponseStreamBase implements HttpClientResponse {
@@ -585,9 +602,9 @@ abstract class _NiddlerHttpClientResponseStreamBase implements HttpClientRespons
 
   @override
   Stream<List<int>> handleError(
-      Function onError, {
-        bool Function(dynamic error) test, // ignore: avoid_annotating_with_dynamic
-      }) =>
+    Function onError, {
+    bool Function(dynamic error) test, // ignore: avoid_annotating_with_dynamic
+  }) =>
       _bodyStream.handleError(onError, test: test);
 
   @override
