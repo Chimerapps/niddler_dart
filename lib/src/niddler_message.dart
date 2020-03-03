@@ -4,6 +4,8 @@
 
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
+
 /// Base for all niddler messages
 abstract class NiddlerMessageBase {
   /// Message id of the message. Must be unique over all messages
@@ -22,8 +24,7 @@ abstract class NiddlerMessageBase {
   String body;
 
   /// Constructor
-  NiddlerMessageBase(
-      this.messageId, this.requestId, this.timeStamp, this.headers);
+  NiddlerMessageBase(this.messageId, this.requestId, this.timeStamp, this.headers);
 
   /// Updates the given (json) data with the values stored in this instance
   void updateJson(Map<String, dynamic> jsonData) {
@@ -48,9 +49,15 @@ class NiddlerRequest extends NiddlerMessageBase {
   final List<String> stackTraces;
 
   /// Constructor
-  NiddlerRequest(this.url, this.method, this.stackTraces, String messageId,
-      String requestId, int timeStamp, Map<String, List<String>> headers)
-      : super(messageId, requestId, timeStamp, headers);
+  NiddlerRequest({
+    @required this.url,
+    @required this.method,
+    @required this.stackTraces,
+    @required String messageId,
+    @required String requestId,
+    @required int timeStamp,
+    @required Map<String, List<String>> headers,
+  }) : super(messageId, requestId, timeStamp, headers);
 
   /// Converts this request to a json object
   dynamic toJson() {
@@ -99,20 +106,20 @@ class NiddlerResponse extends NiddlerMessageBase {
   final int waitTime;
 
   /// Constructor
-  NiddlerResponse(
-      this.statusCode,
-      this.statusLine,
-      this.httpVersion,
-      this.actualNetworkRequest,
-      this.actualNetworkResponse,
-      this.writeTime,
-      this.readTime,
-      this.waitTime,
-      String messageId,
-      String requestId,
-      int timeStamp,
-      Map<String, List<String>> headers)
-      : super(messageId, requestId, timeStamp, headers);
+  NiddlerResponse({
+    @required this.statusCode,
+    @required this.statusLine,
+    @required this.httpVersion,
+    @required this.writeTime,
+    @required this.readTime,
+    @required this.waitTime,
+    @required String messageId,
+    @required String requestId,
+    @required int timeStamp,
+    @required Map<String, List<String>> headers,
+    this.actualNetworkRequest,
+    this.actualNetworkResponse,
+  }) : super(messageId, requestId, timeStamp, headers);
 
   /// Converts the response to a json object
   dynamic toJson() {

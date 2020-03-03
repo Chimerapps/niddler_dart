@@ -259,7 +259,15 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   @override
   Future<HttpClientResponse> close() async {
-    final _originalRequest = NiddlerRequest(uri.toString(), method, _stackTraces, Uuid().v4(), requestId, _requestTime, Map<String, List<String>>());
+    final _originalRequest = NiddlerRequest(
+      url: uri.toString(),
+      method: method,
+      stackTraces: _stackTraces,
+      messageId: Uuid().v4(),
+      requestId: requestId,
+      timeStamp: _requestTime,
+      headers: Map<String, List<String>>(),
+    );
     headers.forEach((key, values) => _originalRequest.headers[key] = values);
 
     //TODO optimize for speeeeeed
@@ -286,13 +294,15 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
           ..maxRedirects = maxRedirects
           ..cookies.addAll(cookies);
 
-        executingRequest = NiddlerRequest(overriddenRequest.url,
-            overriddenRequest.method,
-            _stackTraces,
-            Uuid().v4(),
-            requestId,
-            _requestTime,
-            Map<String, List<String>>());
+        executingRequest = NiddlerRequest(
+          url: overriddenRequest.url,
+          method: overriddenRequest.method,
+          stackTraces: _stackTraces,
+          messageId: Uuid().v4(),
+          requestId: requestId,
+          timeStamp: _requestTime,
+          headers: Map<String, List<String>>(),
+        );
         executingRequest.headers.addAll(overriddenRequest.headers);
 
         if (overriddenRequest.encodedBody != null) {
@@ -326,19 +336,59 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     final connectionHeader = executingRequest.headers['connection'];
     if (connectionHeader != null && connectionHeader.firstWhere((element) => element.toLowerCase() == 'upgrade') != null) return request.close();
 
-    return request.close().then((response) {
-      final responseHeaders = Map<String, List<String>>();
-      response.headers.forEach((key, value) => responseHeaders[key] = value);
+    return request.close().then((response) => _handleResponse(_originalRequest, response));
+  }
 
-      final niddlerResponse = NiddlerResponse(response.statusCode, response.reasonPhrase, null, null, null, -1, -1, -1, Uuid().v4(), requestId,
-          DateTime.now().millisecondsSinceEpoch, responseHeaders);
+  Future<HttpClientResponse> _handleResponse(NiddlerRequest request, HttpClientResponse originalResponse) {
+    final responseHeaders = Map<String, List<String>>();
+    originalResponse.headers.forEach((key, value) => responseHeaders[key] = value);
+    final initialNiddlerResponse = NiddlerResponse(
+      statusCode: originalResponse.statusCode,
+      statusLine: originalResponse.reasonPhrase,
+      httpVersion: null,
+      readTime: -1,
+      writeTime: -1,
+      waitTime: -1,
+      messageId: Uuid().v4(),
+      requestId: requestId,
+      timeStamp: DateTime.now().millisecondsSinceEpoch,
+      headers: responseHeaders,
+    );
 
-      return response.toList().then((bodyBytes) {
-        _encodeBody(niddlerResponse, bodyBytes).then(_niddler.logResponseJson);
+    return originalResponse.toList().then((bodyBytes) {
+      if (!_niddler.debugger.isActive) return _handleDefaultResponse(initialNiddlerResponse, originalResponse, bodyBytes);
 
-        return _NiddlerHttpClientResponse(response, bodyBytes);
-      });
+      return _handleResponseWithDebugger(request, initialNiddlerResponse, originalResponse, bodyBytes);
     });
+  }
+
+  Future<HttpClientResponse> _handleResponseWithDebugger(
+      NiddlerRequest request, NiddlerResponse initialNiddlerResponse, HttpClientResponse originalResponse, List<List<int>> bodyBytes) async {
+    //TODO optimize for speed
+    if (bodyBytes != null && bodyBytes.isNotEmpty) {
+      final mappedBodyBytes = List<int>();
+      bodyBytes.forEach(mappedBodyBytes.addAll);
+      if (bodyBytes.isNotEmpty) {
+        initialNiddlerResponse.body = const Base64Codec.urlSafe().encode(mappedBodyBytes);
+      }
+    }
+
+    final debuggerResponse = await _niddler.debugger.overrideResponse(request, initialNiddlerResponse);
+    if (debuggerResponse == null) return _handleDefaultResponse(initialNiddlerResponse, originalResponse, bodyBytes);
+
+    //TODO
+    throw ArgumentError('Not supported yet');
+  }
+
+  Future<HttpClientResponse> _handleDefaultResponse(
+    NiddlerResponse initialNiddlerResponse,
+    HttpClientResponse originalResponse,
+    List<List<int>> bodyBytes,
+  ) async {
+    final stringMessage = await _encodeBody(initialNiddlerResponse, bodyBytes);
+    _niddler.logResponseJson(stringMessage);
+
+    return _NiddlerHttpClientResponseWrapper(originalResponse, bodyBytes);
   }
 
   @override
@@ -356,177 +406,6 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   @override
   void writeln([Object obj = '']) => write('$obj\n');
-}
-
-class _NiddlerHttpClientResponse implements HttpClientResponse {
-  final HttpClientResponse _delegate;
-  Stream<List<int>> _stream;
-
-  _NiddlerHttpClientResponse(this._delegate, List<List<int>> body) {
-    if (body == null) {
-      _stream = const Stream.empty();
-    } else {
-      _stream = Stream.fromIterable(body);
-    }
-  }
-
-  @override
-  X509Certificate get certificate => _delegate.certificate;
-
-  @override
-  HttpConnectionInfo get connectionInfo => _delegate.connectionInfo;
-
-  @override
-  int get contentLength => _delegate.contentLength;
-
-  @override
-  List<Cookie> get cookies => _delegate.cookies;
-
-  @override
-  Future<Socket> detachSocket() => _delegate.detachSocket();
-
-  @override
-  HttpHeaders get headers => _delegate.headers;
-
-  @override
-  bool get isRedirect => _delegate.isRedirect;
-
-  @override
-  bool get persistentConnection => _delegate.persistentConnection;
-
-  @override
-  String get reasonPhrase => _delegate.reasonPhrase;
-
-  @override
-  Future<HttpClientResponse> redirect([String method, Uri url, bool followLoops]) => _delegate.redirect(method, url, followLoops); //TODO?
-
-  @override
-  List<RedirectInfo> get redirects => _delegate.redirects;
-
-  @override
-  int get statusCode => _delegate.statusCode;
-
-  @override
-  Future<bool> any(bool Function(List<int> element) test) => _stream.any(test);
-
-  @override
-  Stream<List<int>> asBroadcastStream(
-      {void Function(StreamSubscription<List<int>> subscription) onListen, void Function(StreamSubscription<List<int>> subscription) onCancel}) {
-    return _stream.asBroadcastStream(onListen: onListen, onCancel: onCancel);
-  }
-
-  @override
-  Stream<E> asyncExpand<E>(Stream<E> Function(List<int> event) convert) => _stream.asyncExpand(convert);
-
-  @override
-  Stream<E> asyncMap<E>(FutureOr<E> Function(List<int> event) convert) => _stream.asyncMap(convert);
-
-  @override
-  Stream<R> cast<R>() => _stream.cast();
-
-  @override
-  Future<bool> contains(Object needle) => _stream.contains(needle);
-
-  @override
-  Stream<List<int>> distinct([bool Function(List<int> previous, List<int> next) equals]) => _stream.distinct(equals);
-
-  @override
-  Future<E> drain<E>([E futureValue]) => _stream.drain(futureValue);
-
-  @override
-  Future<List<int>> elementAt(int index) => _stream.elementAt(index);
-
-  @override
-  Future<bool> every(bool Function(List<int> element) test) => _stream.every(test);
-
-  @override
-  Stream<S> expand<S>(Iterable<S> Function(List<int> element) convert) => _stream.expand(convert);
-
-  @override
-  Future<List<int>> get first => _stream.first;
-
-  @override
-  Future<List<int>> firstWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _stream.firstWhere(test, orElse: orElse);
-
-  @override
-  Future<S> fold<S>(S initialValue, S Function(S previous, List<int> element) combine) => _stream.fold(initialValue, combine);
-
-  @override
-  Future forEach(void Function(List<int> element) action) => _stream.forEach(action);
-
-  @override
-  Stream<List<int>> handleError(Function onError,
-          // ignore: avoid_annotating_with_dynamic
-          {bool Function(dynamic error) test}) =>
-      _stream.handleError(onError, test: test);
-
-  @override
-  bool get isBroadcast => _stream.isBroadcast;
-
-  @override
-  Future<bool> get isEmpty => _stream.isEmpty;
-
-  @override
-  Future<String> join([String separator = '']) => _stream.join(separator);
-
-  @override
-  Future<List<int>> get last => _stream.last;
-
-  @override
-  Future<List<int>> lastWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _stream.lastWhere(test, orElse: orElse);
-
-  @override
-  Future<int> get length => _stream.length;
-
-  @override
-  StreamSubscription<List<int>> listen(void Function(List<int> event) onData, {Function onError, void Function() onDone, bool cancelOnError}) {
-    return _stream.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
-  }
-
-  @override
-  Stream<S> map<S>(S Function(List<int> event) convert) => _stream.map(convert);
-
-  @override
-  Future pipe(StreamConsumer<List<int>> streamConsumer) => _stream.pipe(streamConsumer);
-
-  @override
-  Future<List<int>> reduce(List<int> Function(List<int> previous, List<int> element) combine) => _stream.reduce(combine);
-
-  @override
-  Future<List<int>> get single => _stream.single;
-
-  @override
-  Future<List<int>> singleWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _stream.singleWhere(test, orElse: orElse);
-
-  @override
-  Stream<List<int>> skip(int count) => _stream.skip(count);
-
-  @override
-  Stream<List<int>> skipWhile(bool Function(List<int> element) test) => _stream.skipWhile(test);
-
-  @override
-  Stream<List<int>> take(int count) => _stream.take(count);
-
-  @override
-  Stream<List<int>> takeWhile(bool Function(List<int> element) test) => _stream.takeWhile(test);
-
-  @override
-  Stream<List<int>> timeout(Duration timeLimit, {void Function(EventSink<List<int>> sink) onTimeout}) => _stream.timeout(timeLimit, onTimeout: onTimeout);
-
-  @override
-  Future<List<List<int>>> toList() => _stream.toList();
-
-  @override
-  Future<Set<List<int>>> toSet() => _stream.toSet();
-
-  @override
-  Stream<S> transform<S>(StreamTransformer<List<int>, S> streamTransformer) => _stream.transform(streamTransformer);
-
-  @override
-  Stream<List<int>> where(bool Function(List<int> event) test) => _stream.where(test);
-
-  @override
-  HttpClientResponseCompressionState get compressionState => _delegate.compressionState;
 }
 
 class _IsolateData {
@@ -598,6 +477,183 @@ Iterable<String> _expandWithGaps(Iterable<Trace> source) {
     }
     return list;
   });
+}
+
+class _NiddlerHttpClientResponseWrapper extends _NiddlerHttpClientResponseStreamBase {
+  final HttpClientResponse _originalResponse;
+
+  _NiddlerHttpClientResponseWrapper(this._originalResponse, List<List<int>> body) : super(body);
+
+  @override
+  X509Certificate get certificate => _originalResponse.certificate;
+
+  @override
+  HttpClientResponseCompressionState get compressionState => HttpClientResponseCompressionState.decompressed;
+
+  @override
+  HttpConnectionInfo get connectionInfo => _originalResponse.connectionInfo;
+
+  @override
+  int get contentLength => -1; //Due to decompressed flag, this can be -1
+
+  @override
+  List<Cookie> get cookies => _originalResponse.cookies;
+
+  @override
+  Future<Socket> detachSocket() => _originalResponse.detachSocket();
+
+  @override
+  HttpHeaders get headers => _originalResponse.headers;
+
+  @override
+  bool get isRedirect => _originalResponse.isRedirect;
+
+  @override
+  bool get persistentConnection => _originalResponse.persistentConnection;
+
+  @override
+  String get reasonPhrase => _originalResponse.reasonPhrase;
+
+  @override
+  Future<HttpClientResponse> redirect([String method, Uri url, bool followLoops]) {
+    return _originalResponse.redirect(method, url, followLoops);
+  }
+
+  @override
+  List<RedirectInfo> get redirects => _originalResponse.redirects;
+
+  @override
+  int get statusCode => _originalResponse.statusCode;
+}
+
+abstract class _NiddlerHttpClientResponseStreamBase implements HttpClientResponse {
+  final Stream<List<int>> _bodyStream;
+
+  _NiddlerHttpClientResponseStreamBase(List<List<int>> data) : _bodyStream = data == null ? const Stream.empty() : Stream.fromIterable(data);
+
+  @override
+  Future<bool> any(bool Function(List<int> element) test) => _bodyStream.any(test);
+
+  @override
+  Stream<List<int>> asBroadcastStream({
+    void Function(StreamSubscription<List<int>> subscription) onListen,
+    void Function(StreamSubscription<List<int>> subscription) onCancel,
+  }) =>
+      _bodyStream.asBroadcastStream(
+        onListen: onListen,
+        onCancel: onCancel,
+      );
+
+  @override
+  Stream<E> asyncExpand<E>(Stream<E> Function(List<int> event) convert) => _bodyStream.asyncExpand(convert);
+
+  @override
+  Stream<E> asyncMap<E>(FutureOr<E> Function(List<int> event) convert) => _bodyStream.asyncMap(convert);
+
+  @override
+  Stream<R> cast<R>() => _bodyStream.cast();
+
+  @override
+  Future<bool> contains(Object needle) => _bodyStream.contains(needle);
+
+  @override
+  Stream<List<int>> distinct([bool Function(List<int> previous, List<int> next) equals]) => _bodyStream.distinct(equals);
+
+  @override
+  Future<E> drain<E>([E futureValue]) => _bodyStream.drain(futureValue);
+
+  @override
+  Future<List<int>> elementAt(int index) => _bodyStream.elementAt(index);
+
+  @override
+  Future<bool> every(bool Function(List<int> element) test) => _bodyStream.every(test);
+
+  @override
+  Stream<S> expand<S>(Iterable<S> Function(List<int> element) convert) => _bodyStream.expand(convert);
+
+  @override
+  Future<List<int>> get first => _bodyStream.first;
+
+  @override
+  Future<List<int>> firstWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _bodyStream.firstWhere(test, orElse: orElse);
+
+  @override
+  Future<S> fold<S>(S initialValue, S Function(S previous, List<int> element) combine) => _bodyStream.fold(initialValue, combine);
+
+  @override
+  Future forEach(void Function(List<int> element) action) => _bodyStream.forEach(action);
+
+  @override
+  Stream<List<int>> handleError(
+      Function onError, {
+        bool Function(dynamic error) test, // ignore: avoid_annotating_with_dynamic
+      }) =>
+      _bodyStream.handleError(onError, test: test);
+
+  @override
+  bool get isBroadcast => _bodyStream.isBroadcast;
+
+  @override
+  Future<bool> get isEmpty => _bodyStream.isEmpty;
+
+  @override
+  Future<String> join([String separator = ""]) => _bodyStream.join(separator);
+
+  @override
+  Future<List<int>> get last => _bodyStream.last;
+
+  @override
+  Future<List<int>> lastWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _bodyStream.lastWhere(test, orElse: orElse);
+
+  @override
+  Future<int> get length => _bodyStream.length;
+
+  @override
+  StreamSubscription<List<int>> listen(void Function(List<int> event) onData, {Function onError, void Function() onDone, bool cancelOnError}) {
+    return _bodyStream.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  }
+
+  @override
+  Stream<S> map<S>(S Function(List<int> event) convert) => _bodyStream.map(convert);
+
+  @override
+  Future pipe(StreamConsumer<List<int>> streamConsumer) => _bodyStream.pipe(streamConsumer);
+
+  @override
+  Future<List<int>> reduce(List<int> Function(List<int> previous, List<int> element) combine) => _bodyStream.reduce(combine);
+
+  @override
+  Future<List<int>> get single => _bodyStream.single;
+
+  @override
+  Future<List<int>> singleWhere(bool Function(List<int> element) test, {List<int> Function() orElse}) => _bodyStream.singleWhere(test, orElse: orElse);
+
+  @override
+  Stream<List<int>> skip(int count) => _bodyStream.skip(count);
+
+  @override
+  Stream<List<int>> skipWhile(bool Function(List<int> element) test) => _bodyStream.skipWhile(test);
+
+  @override
+  Stream<List<int>> take(int count) => _bodyStream.take(count);
+
+  @override
+  Stream<List<int>> takeWhile(bool Function(List<int> element) test) => _bodyStream.takeWhile(test);
+
+  @override
+  Stream<List<int>> timeout(Duration timeLimit, {void Function(EventSink<List<int>> sink) onTimeout}) => _bodyStream.timeout(timeLimit, onTimeout: onTimeout);
+
+  @override
+  Future<List<List<int>>> toList() => _bodyStream.toList();
+
+  @override
+  Future<Set<List<int>>> toSet() => _bodyStream.toSet();
+
+  @override
+  Stream<S> transform<S>(StreamTransformer<List<int>, S> streamTransformer) => _bodyStream.transform(streamTransformer);
+
+  @override
+  Stream<List<int>> where(bool Function(List<int> event) test) => _bodyStream.where(test);
 }
 
 class _SimpleHeaders implements HttpHeaders {
