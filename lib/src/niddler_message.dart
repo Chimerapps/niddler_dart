@@ -107,8 +107,6 @@ class NiddlerResponse extends NiddlerMessageBase {
   /// The time spent waiting for the first data to become available. If unknown, set to -1
   final int waitTime;
 
-  String _jsonStringCache;
-
   /// Constructor
   NiddlerResponse({
     @required this.statusCode,
