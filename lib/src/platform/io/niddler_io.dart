@@ -18,10 +18,13 @@ typedef NiddlerDebugPrintCallback = void Function(String message,
     {int wrapWidth});
 
 NiddlerDebugPrintCallback niddlerDebugPrint = _niddlerDartDebugPrint;
+NiddlerDebugPrintCallback niddlerVerbosePrint = _dontPrint;
 
 _niddlerDartDebugPrint(String message, {int wrapWidth}) {
   print(message);
 }
+
+_dontPrint(String message, {int wrapWidth}) {}
 
 Niddler createNiddler(
   int maxCacheSize,
@@ -115,6 +118,9 @@ class NiddlerImpl implements Niddler {
       includeStackTraces: _implementation.includeStackTraces,
     );
   }
+
+  @override
+  NiddlerDebugger get debugger => _implementation.debugger;
 }
 
 class _NiddlerImplementation implements NiddlerServerConnectionListener {
@@ -141,6 +147,8 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
     _announcementManager = NiddlerServerAnnouncementManager(
         bundleId, (serverInfo == null) ? null : serverInfo.icon, _server);
   }
+
+  NiddlerDebugger get debugger => _server.debugger;
 
   void send(String message) {
     _messagesCache.put(message);

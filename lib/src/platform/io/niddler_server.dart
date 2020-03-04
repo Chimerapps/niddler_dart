@@ -6,10 +6,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:niddler_dart/niddler_dart.dart';
+import 'package:niddler_dart/src/platform/debugger/niddler_debugger.dart';
+import 'package:niddler_dart/src/platform/io/niddler_io.dart';
 import 'package:pointycastle/digests/sha512.dart';
 import 'package:synchronized/synchronized.dart';
-
-import 'package:niddler_dart/src/platform/io/niddler_io.dart';
 
 const _chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -28,8 +29,12 @@ class NiddlerServer {
   final String _password;
   final _lock = Lock();
   final List<NiddlerConnection> _connections = List();
+  final NiddlerDebuggerImpl _debugger = NiddlerDebuggerImpl();
 
   int get port => _server.port;
+
+  NiddlerDebugger get debugger => _debugger;
+
   NiddlerServerConnectionListener connectionListener;
 
   NiddlerServer(this._port, [this._bundleId, this._password]);
@@ -45,6 +50,9 @@ class NiddlerServer {
   Future<void> shutdown() async {
     await _server.close(force: true);
     _server = null;
+    await _lock.synchronized(() async {
+      _connections.forEach((socket) => socket.close());
+    });
   }
 
   /// Sends this message to all connected (and authenticated) clients
@@ -55,7 +63,7 @@ class NiddlerServer {
   }
 
   void _onNewConnection(WebSocket socket) {
-    final connection = NiddlerConnection(socket, connectionListener);
+    final connection = NiddlerConnection(socket, connectionListener, this);
     _lock.synchronized(() async {
       _connections.add(connection);
       socket.listen(connection.onMessage,
@@ -72,6 +80,7 @@ class NiddlerServer {
   }
 
   void _onSocketClosed(NiddlerConnection socket) {
+    _debugger.onConnectionClosed(socket);
     _lock.synchronized(() async {
       _connections.remove(socket);
     });
@@ -80,14 +89,20 @@ class NiddlerServer {
 
 /// Represents a client connection (over websockets). Connections will not send data until they have authenticated (when required)
 class NiddlerConnection {
+  static const _MESSAGE_AUTH = 'authReply';
+  static const _MESSAGE_START_DEBUG = 'startDebug';
+  static const _MESSAGE_END_DEBUG = 'endDebug';
+  static const _MESSAGE_DEBUG_CONTROL = 'controlDebug';
+
   final WebSocket _socket;
+  final NiddlerServer _server;
   final NiddlerServerConnectionListener _connectionListener;
   bool _authenticated = false;
   String _currentAuthRequestData;
   String _currentPassword;
 
-  NiddlerConnection(this._socket, this._connectionListener) {
-    _socket.add('{"type":"protocol","protocolVersion":3}');
+  NiddlerConnection(this._socket, this._connectionListener, this._server) {
+    _socket.add('{"type":"protocol","protocolVersion":4}');
   }
 
   void sendAuthRequest(String password, String bundleId) {
@@ -120,8 +135,19 @@ class NiddlerConnection {
     final parsedJson = jsonDecode(data);
     final type = parsedJson['type'];
     switch (type) {
-      case 'authReply':
+      case _MESSAGE_AUTH:
         _handleAuthReply(parsedJson['hashKey']);
+        break;
+      case _MESSAGE_START_DEBUG:
+        if (_authenticated) {
+          _server._debugger.onDebuggerAttached(this);
+        }
+        break;
+      case _MESSAGE_END_DEBUG:
+        _server._debugger.onDebuggerConnectionClosed();
+        break;
+      case _MESSAGE_DEBUG_CONTROL:
+        _server._debugger.onControlMessage(parsedJson, this);
         break;
     }
   }
@@ -148,5 +174,9 @@ class NiddlerConnection {
       buffer.writeCharCode(_chars.codeUnitAt(rnd.nextInt(_chars.length)));
     }
     return buffer.toString();
+  }
+
+  void close() {
+    _socket.close();
   }
 }

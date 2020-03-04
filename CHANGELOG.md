@@ -1,3 +1,7 @@
+## 0.7.0-dev
+
+- Basic niddler debugging protocol support
+
 ## 0.6.0
 
 - Capture request stack traces if so configured

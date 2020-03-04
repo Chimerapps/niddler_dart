@@ -4,6 +4,8 @@
 
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
+
 /// Base for all niddler messages
 abstract class NiddlerMessageBase {
   /// Message id of the message. Must be unique over all messages
@@ -45,12 +47,19 @@ class NiddlerRequest extends NiddlerMessageBase {
   /// The method of this request, can be a HTTP method or something else that describes your request (eg in websockets)
   final String method;
 
+  /// The stack traces of the call site that started the request. Can be null if not enabled
   final List<String> stackTraces;
 
   /// Constructor
-  NiddlerRequest(this.url, this.method, this.stackTraces, String messageId,
-      String requestId, int timeStamp, Map<String, List<String>> headers)
-      : super(messageId, requestId, timeStamp, headers);
+  NiddlerRequest({
+    @required this.url,
+    @required this.method,
+    @required this.stackTraces,
+    @required String messageId,
+    @required String requestId,
+    @required int timeStamp,
+    @required Map<String, List<String>> headers,
+  }) : super(messageId, requestId, timeStamp, headers);
 
   /// Converts this request to a json object
   dynamic toJson() {
@@ -98,21 +107,23 @@ class NiddlerResponse extends NiddlerMessageBase {
   /// The time spent waiting for the first data to become available. If unknown, set to -1
   final int waitTime;
 
+  String _jsonStringCache;
+
   /// Constructor
-  NiddlerResponse(
-      this.statusCode,
-      this.statusLine,
-      this.httpVersion,
-      this.actualNetworkRequest,
-      this.actualNetworkResponse,
-      this.writeTime,
-      this.readTime,
-      this.waitTime,
-      String messageId,
-      String requestId,
-      int timeStamp,
-      Map<String, List<String>> headers)
-      : super(messageId, requestId, timeStamp, headers);
+  NiddlerResponse({
+    @required this.statusCode,
+    @required this.statusLine,
+    @required this.httpVersion,
+    @required this.writeTime,
+    @required this.readTime,
+    @required this.waitTime,
+    @required String messageId,
+    @required String requestId,
+    @required int timeStamp,
+    @required Map<String, List<String>> headers,
+    this.actualNetworkRequest,
+    this.actualNetworkResponse,
+  }) : super(messageId, requestId, timeStamp, headers);
 
   /// Converts the response to a json object
   dynamic toJson() {
