@@ -1,4 +1,4 @@
-Niddler network inspector for dart and flutter
+Niddler network inspector for dart and flutter. Download the niddler intellij plugin [here](https://plugins.jetbrains.com/plugin/10347-niddler)
 
 ![latestVersion](https://img.shields.io/github/release/Chimerapps/niddler_dart.svg)
 
@@ -23,6 +23,9 @@ main() async {
       final niddler = niddlerBuilder.build();
       await niddler.start();
       niddler.install();
+  
+      //Optionally wait for debugger to connect
+      await niddler.debugger.waitForConnection();
     
       //Make http requests ...
     
@@ -30,6 +33,13 @@ main() async {
   });
 }
 ```
+
+## Debugging support
+Since 0.7.0 basic debugging support has been added to the library. Use the plugin to connect with a debugger connection. 
+When so required, you can wait for the debugger to be connected before continuing with the application, to ensure the debugger is attached before
+any requests are made by using `await niddler.debugger.waitForConnection();`
+
+Not that using the debugger has a more noticeable performance impact
 
 ## Request site stack traces
 Since 0.6.0, niddler supports capturing stack traces at request site across async boundaries. This can have a (very) small performance impact.
