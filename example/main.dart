@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:niddler_dart/niddler_dart.dart';
 import 'package:stack_trace/stack_trace.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> arguments) async {
   await Chain.capture(() async {
     final niddlerBuilder = NiddlerBuilder()
       ..bundleId = 'com.test.test'
@@ -18,9 +18,11 @@ Future<void> main() async {
     await niddler.start();
     niddler.install();
 
-    print('Waiting for debugger');
-    await niddler.debugger.waitForConnection();
-    print('Debugger connected!');
+    if (arguments.isNotEmpty) {
+      print('Waiting for debugger');
+      await niddler.debugger.waitForConnection();
+      print('Debugger connected!');
+    }
 
     await executeGetTypeCode();
     await executePost1();
@@ -28,7 +30,11 @@ Future<void> main() async {
     await executePost2();
     await getImage();
 
-    await Future.delayed(const Duration(seconds: 10));
+    const waitDuration = Duration(seconds: 10);
+
+    print('Asking niddler to stop for $waitDuration');
+
+    await Future.delayed(waitDuration);
 
     print('Asking niddler to stop');
 

@@ -64,10 +64,14 @@ abstract class NiddlerDebugger {
 
   Future<bool> waitForConnection();
 
-  Future<DebugRequest> overrideRequest(NiddlerRequest request);
+  Future<DebugRequest> overrideRequest(
+      NiddlerRequest request, List<List<int>> nonSerializedBody);
 
   Future<DebugResponse> overrideResponse(
-      NiddlerRequest request, NiddlerResponse response);
+    NiddlerRequest request,
+    NiddlerResponse response,
+    List<List<int>> nonSerializedBody,
+  );
 }
 
 class DebugRequest {
