@@ -324,8 +324,8 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
         executingRequest.headers.addAll(overriddenRequest.headers);
 
         if (overriddenRequest.encodedBody != null) {
-          final decoded =
-              const Base64Codec.urlSafe().decode(overriddenRequest.encodedBody);
+          final decoded = const Base64Codec.urlSafe()
+              .decode(_ensureBase64Padded(overriddenRequest.encodedBody));
           request
             ..contentLength = decoded.length
             ..add(decoded);
@@ -429,7 +429,8 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     List<List<int>> newBody;
     if (debuggerResponse.encodedBody != null) {
       newBody = [
-        const Base64Codec.urlSafe().decode(debuggerResponse.encodedBody)
+        const Base64Codec.urlSafe()
+            .decode(_ensureBase64Padded(debuggerResponse.encodedBody))
       ];
     }
     changedNiddlerResponse.headers['x-niddler-debug'] = ['true'];
@@ -878,4 +879,9 @@ class _SimpleHeaders implements HttpHeaders {
     }
     return items[0];
   }
+}
+
+//Since dart can't handle no padding...
+String _ensureBase64Padded(String input) {
+  return const Base64Codec.urlSafe().normalize(input);
 }

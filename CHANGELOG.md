@@ -1,3 +1,7 @@
+## 0.7.2
+
+- Fixed issue when the debugger would send non-padded base64
+
 ## 0.7.1
 
 - Add tag header that indicates that a request/response is modified by the debugger
