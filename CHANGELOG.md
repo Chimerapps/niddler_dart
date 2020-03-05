@@ -1,3 +1,7 @@
+## 0.7.1
+
+- Add tag header that indicates that a request/response is modified by the debugger
+
 ## 0.7.0
 
 - Basic niddler debugging protocol support

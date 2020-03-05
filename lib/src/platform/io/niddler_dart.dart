@@ -317,7 +317,9 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
           messageId: Uuid().v4(),
           requestId: requestId,
           timeStamp: _requestTime,
-          headers: Map<String, List<String>>(),
+          headers: {
+            'x-niddler-debug': ['true'],
+          },
         );
         executingRequest.headers.addAll(overriddenRequest.headers);
 
@@ -420,7 +422,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       readTime: -1,
       waitTime: -1,
       timeStamp: initialNiddlerResponse.timeStamp,
-      headers: debuggerResponse.headers,
+      headers: debuggerResponse.headers ?? Map<String, List<String>>(),
       messageId: initialNiddlerResponse.messageId,
       requestId: requestId,
     );
@@ -430,6 +432,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
         const Base64Codec.urlSafe().decode(debuggerResponse.encodedBody)
       ];
     }
+    changedNiddlerResponse.headers['x-niddler-debug'] = ['true'];
 
     final stringMessage = await _encodeBody(changedNiddlerResponse, newBody);
     _niddler.logResponseJson(stringMessage);
