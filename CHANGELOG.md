@@ -1,3 +1,10 @@
+## 0.7.3
+
+- Niddler announcement v3 support
+    - Send 'tag' and 'icon' as extensions
+- Print tag to allow for fast connection from IDE
+- Support sending icon for session
+
 ## 0.7.2
 
 - Fixed issue when the debugger would send non-padded base64

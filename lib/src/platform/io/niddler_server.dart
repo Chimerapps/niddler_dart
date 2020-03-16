@@ -11,6 +11,7 @@ import 'package:niddler_dart/src/platform/debugger/niddler_debugger.dart';
 import 'package:niddler_dart/src/platform/io/niddler_io.dart';
 import 'package:pointycastle/digests/sha512.dart';
 import 'package:synchronized/synchronized.dart';
+import 'package:uuid/uuid.dart';
 
 const _chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -30,6 +31,9 @@ class NiddlerServer {
   final _lock = Lock();
   final List<NiddlerConnection> _connections = List();
   final NiddlerDebuggerImpl _debugger = NiddlerDebuggerImpl();
+  final String tag = Uuid().v4().substring(0, 6);
+
+  final int protocolVersion = 4; //Debugging support
 
   int get port => _server.port;
 
@@ -43,7 +47,7 @@ class NiddlerServer {
   Future<void> start() async {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, _port)
       ..transform(WebSocketTransformer()).listen(_onNewConnection);
-    niddlerDebugPrint('Server running on ${_server.port}');
+    niddlerDebugPrint('Niddler Server running on ${_server.port} [$tag]');
   }
 
   /// Stops the server

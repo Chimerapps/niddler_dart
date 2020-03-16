@@ -16,7 +16,7 @@ main() async {
   await Chain.capture(() async { //For better flutter stack traces, wrap main code in this Chain.capture from package stack_trace
     final niddlerBuilder = NiddlerBuilder()
         ..bundleId = 'com.test.test'
-        ..serverInfo = NiddlerServerInfo('Some descriptive name', 'Some description')
+        ..serverInfo = NiddlerServerInfo('Some descriptive name', 'Some description', 'dart')
         ..includeStackTrace = true //Capture request stack traces. Wrap all content inside main with `Chain.capture`
         ..port = 0; //0 to have niddler pick it's own port. Automatic discovery will make this visible
   

@@ -9,7 +9,7 @@ Future<void> main(List<String> arguments) async {
     final niddlerBuilder = NiddlerBuilder()
       ..bundleId = 'com.test.test'
       ..serverInfo =
-          NiddlerServerInfo('Some descriptive name', 'Some description')
+          NiddlerServerInfo('Some descriptive name', 'Some description', icon: 'dart')
       ..includeStackTrace = true
       ..port =
           0; //0 to have niddler pick it's own port. Automatic discovery will make this visible

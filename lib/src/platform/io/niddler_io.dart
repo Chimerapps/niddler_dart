@@ -134,18 +134,23 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   bool _started = false;
   NiddlerServerAnnouncementManager _announcementManager;
 
-  _NiddlerImplementation(int maxCacheSize,
-      {int port = 0,
-      String password,
-      String bundleId,
-      this.serverInfo,
-      this.stackTraceSanitizer,
-      this.includeStackTraces})
-      : _messagesCache = NiddlerMessageCache(maxCacheSize),
+  _NiddlerImplementation(
+    int maxCacheSize, {
+    int port = 0,
+    String password,
+    String bundleId,
+    this.serverInfo,
+    this.stackTraceSanitizer,
+    this.includeStackTraces,
+  })  : _messagesCache = NiddlerMessageCache(maxCacheSize),
         _server = NiddlerServer(port, password, bundleId) {
     _server.connectionListener = this;
-    _announcementManager = NiddlerServerAnnouncementManager(
-        bundleId, (serverInfo == null) ? null : serverInfo.icon, _server);
+    _announcementManager = NiddlerServerAnnouncementManager(bundleId, _server);
+
+    if (serverInfo?.icon != null) {
+      _announcementManager.addExtension(IconExtension(serverInfo.icon));
+    }
+    _announcementManager.addExtension(TagExtension(_server.tag));
   }
 
   NiddlerDebugger get debugger => _server.debugger;

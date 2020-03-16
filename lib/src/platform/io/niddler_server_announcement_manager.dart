@@ -14,13 +14,16 @@ import 'package:synchronized/synchronized.dart';
 const int _ANNOUNCEMENT_SOCKET_PORT = 6394;
 const int _COMMAND_REQUEST_QUERY = 0x01;
 const int _COMMAND_REQUEST_ANNOUNCE = 0x02;
-const int _ANNOUNCEMENT_VERSION = 2;
+const int _ANNOUNCEMENT_VERSION = 3;
+
+const int EXTENSION_TYPE_ICON = 1;
+const int EXTENSION_TYPE_TAG = 2;
 
 /// TCP based server that handles niddler client announcements.
 /// These announcements allow clients to discover all processes which currently have niddler enabled.
 class NiddlerServerAnnouncementManager {
   final String _packageName;
-  final String _icon;
+  final _extensions = List<AnnouncementExtension>();
 
   final NiddlerServer _server;
   final lock = Lock();
@@ -28,7 +31,11 @@ class NiddlerServerAnnouncementManager {
   ServerSocket _serverSocket;
   Socket _slaveSocket;
 
-  NiddlerServerAnnouncementManager(this._packageName, this._icon, this._server);
+  NiddlerServerAnnouncementManager(this._packageName, this._server);
+
+  void addExtension(AnnouncementExtension extension) {
+    _extensions.add(extension);
+  }
 
   /// Start the announcement server
   Future<void> start() async {
@@ -134,7 +141,12 @@ class NiddlerServerAnnouncementManager {
     responseData['port'] = _server.port;
     responseData['pid'] = -1;
     responseData['protocol'] = 3; //TODO
-    responseData['icon'] = _icon;
+    responseData['extensions'] = _extensions.map((ext) {
+      return {
+        'name': ext.name,
+        'data': base64.encoder.convert(ext.data()),
+      };
+    }).toList();
     responses.add(responseData);
 
     slaves.forEach((slave) {
@@ -143,7 +155,12 @@ class NiddlerServerAnnouncementManager {
       slaveDescriptor['port'] = slave.port;
       slaveDescriptor['pid'] = slave.pid;
       slaveDescriptor['protocol'] = slave.protocolVersion;
-      responseData['icon'] = slave.icon;
+      slaveDescriptor['extensions'] = slave.extensions.map((ext) {
+        return {
+          'name': ext.name,
+          'data': base64.encoder.convert(ext.data()),
+        };
+      }).toList();
       responses.add(slaveDescriptor);
     });
     return utf8.encode(json.encode(responses));
@@ -174,17 +191,45 @@ class NiddlerServerAnnouncementManager {
     final protocolVersion = byteView.getInt32(offset);
     offset += 4;
 
+    final extensions = List<AnnouncementExtension>();
     String icon;
-    if (version >= _ANNOUNCEMENT_VERSION) {
+    if (version == 2) {
       final iconLength = byteView.getInt32(offset);
       offset += 4;
       if (iconLength > 0) {
         icon = utf8.decode(byteBuffer.asInt8List(offset, iconLength));
         offset += iconLength;
       }
+      extensions.add(IconExtension(icon));
+    } else if (version >= _ANNOUNCEMENT_VERSION) {
+      final extensionCount = byteView.getInt16(offset);
+      offset += 2;
+      for (var i = 0; i < extensionCount; ++i) {
+        final type = byteView.getInt16(offset);
+        offset += 2;
+        final size = byteView.getInt16(offset);
+        offset += 2;
+        final extensionBytes = byteBuffer.asInt8List(offset, size);
+        offset += size;
+
+        switch (type) {
+          case EXTENSION_TYPE_TAG:
+            extensions.add(TagExtension(utf8.decode(extensionBytes)));
+            break;
+          case EXTENSION_TYPE_ICON:
+            extensions.add(IconExtension(utf8.decode(extensionBytes)));
+            break;
+        }
+      }
     }
 
-    final slave = _Slave(packageName, port, pid, protocolVersion, icon);
+    final slave = _Slave(
+      packageName,
+      port,
+      pid,
+      protocolVersion,
+      extensions,
+    );
     slaves.add(slave);
     // ignore: unawaited_futures
     done.then((_) => slaves.remove(slave));
@@ -206,11 +251,10 @@ class NiddlerServerAnnouncementManager {
     if (!doContinue) return;
 
     final packageNameBytes = utf8.encode(_packageName);
-    final iconBytes = _icon != null ? utf8.encode(_icon) : null;
-    final iconBytesLength = iconBytes != null ? iconBytes.length : 0;
-    //Command + version + packageName length + packageName + port + pid + protocolVersion + iconLength + iconBytes
-    final length =
-        1 + 4 + 4 + packageNameBytes.length + 4 + 4 + 4 + 4 + iconBytesLength;
+    //Command + version + packageName length + packageName + port + pid + protocolVersion + extension count
+    var length = 1 + 4 + 4 + packageNameBytes.length + 4 + 4 + 4 + 2;
+
+    _extensions.forEach((ex) => length += 4 + ex.length());
 
     final data = Int8List(length);
     final bytes = data.buffer;
@@ -227,13 +271,19 @@ class NiddlerServerAnnouncementManager {
     offset += 4;
     byteView.setInt32(offset, -1); //PID
     offset += 4;
-    byteView.setInt32(offset, 3); //Protocol version TODO
+    byteView.setInt32(offset, _server.protocolVersion);
     offset += 4;
-    byteView.setInt32(offset, _icon == null ? -1 : iconBytesLength);
-    offset += 4;
-    if (iconBytesLength > 0) {
-      data.setAll(offset, iconBytes);
-    }
+    byteView.setInt16(offset, _extensions.length);
+    offset += 2;
+
+    _extensions.forEach((extension) {
+      byteView.setInt16(offset, extension.type);
+      offset += 2;
+      byteView.setInt16(offset, extension.length());
+      offset += 2;
+      data.setAll(offset, extension.data());
+      offset += extension.length();
+    });
 
     slaveSocket.add(data);
     await slaveSocket.close();
@@ -248,8 +298,46 @@ class _Slave {
   final int port;
   final int pid;
   final int protocolVersion;
-  final String icon;
+  final List<AnnouncementExtension> extensions;
 
   _Slave(
-      this.packageName, this.port, this.pid, this.protocolVersion, this.icon);
+    this.packageName,
+    this.port,
+    this.pid,
+    this.protocolVersion,
+    this.extensions,
+  );
+}
+
+abstract class AnnouncementExtension {
+  final int type;
+  final String name;
+
+  AnnouncementExtension(this.type, this.name);
+
+  int length();
+
+  List<int> data();
+}
+
+class StringExtension extends AnnouncementExtension {
+  final List<int> _data;
+
+  StringExtension(int type, String name, String data)
+      : _data = utf8.encode(data),
+        super(type, name);
+
+  @override
+  List<int> data() => _data;
+
+  @override
+  int length() => _data.length;
+}
+
+class TagExtension extends StringExtension {
+  TagExtension(String tag) : super(EXTENSION_TYPE_TAG, 'tag', tag);
+}
+
+class IconExtension extends StringExtension {
+  IconExtension(String tag) : super(EXTENSION_TYPE_ICON, 'icon', tag);
 }
