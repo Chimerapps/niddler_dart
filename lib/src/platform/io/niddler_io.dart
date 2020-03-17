@@ -14,18 +14,6 @@ import 'package:niddler_dart/src/platform/io/niddler_dart.dart';
 import 'package:niddler_dart/src/platform/io/niddler_server.dart';
 import 'package:niddler_dart/src/platform/io/niddler_server_announcement_manager.dart';
 
-typedef NiddlerDebugPrintCallback = void Function(String message,
-    {int wrapWidth});
-
-NiddlerDebugPrintCallback niddlerDebugPrint = _niddlerDartDebugPrint;
-NiddlerDebugPrintCallback niddlerVerbosePrint = _dontPrint;
-
-_niddlerDartDebugPrint(String message, {int wrapWidth}) {
-  print(message);
-}
-
-_dontPrint(String message, {int wrapWidth}) {}
-
 Niddler createNiddler(
   int maxCacheSize,
   int port,

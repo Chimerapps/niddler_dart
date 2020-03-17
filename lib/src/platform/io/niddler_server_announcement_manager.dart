@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:niddler_dart/src/platform/io/niddler_io.dart';
+import 'package:niddler_dart/src/niddler_log.dart';
 import 'package:niddler_dart/src/platform/io/niddler_server.dart';
 import 'package:synchronized/synchronized.dart';
 
@@ -53,6 +53,7 @@ class NiddlerServerAnnouncementManager {
     Future.doWhile(() async {
       final streamer = StreamController();
       try {
+        niddlerVerbosePrint('Attempting to start in master mode');
         final serverSocket = await ServerSocket.bind(
             InternetAddress.anyIPv4, _ANNOUNCEMENT_SOCKET_PORT)
           ..listen((socket) {
@@ -63,6 +64,7 @@ class NiddlerServerAnnouncementManager {
             // ignore: cascade_invocations
             await streamer.close();
           }, onDone: () async {
+            niddlerVerbosePrint('Server socket done');
             streamer.add(2);
             // ignore: cascade_invocations
             await streamer.close();
@@ -76,6 +78,7 @@ class NiddlerServerAnnouncementManager {
           }
         });
       } catch (e) {
+        niddlerVerbosePrint('Got error in master mode, trying as slave');
         try {
           if (await lock.synchronized(() => _running)) {
             await _runSlave();
@@ -83,6 +86,7 @@ class NiddlerServerAnnouncementManager {
             await streamer.close();
           }
         } catch (e) {
+          niddlerVerbosePrint('Got error in slave mode');
           streamer.add(1);
           await streamer.close();
         } finally {
@@ -111,6 +115,7 @@ class NiddlerServerAnnouncementManager {
   }
 
   Future<void> _onSocket(Socket socket, List<_Slave> slaves) async {
+    niddlerVerbosePrint('Got announcement slave connection');
     Stream<List<int>> dataStream;
     if (!socket.isBroadcast) {
       dataStream = socket.asBroadcastStream();
@@ -134,13 +139,14 @@ class NiddlerServerAnnouncementManager {
 
   Future<List<int>> _handleQuery(
       Stream<List<int>> socket, List<_Slave> slaves) async {
+    niddlerVerbosePrint('Got query request');
     final responses = List<Map<String, dynamic>>();
 
     final responseData = Map<String, dynamic>();
     responseData['packageName'] = _packageName;
     responseData['port'] = _server.port;
     responseData['pid'] = -1;
-    responseData['protocol'] = 3; //TODO
+    responseData['protocol'] = NiddlerServer.protocolVersion;
     responseData['extensions'] = _extensions.map((ext) {
       return {
         'name': ext.name,
@@ -168,6 +174,7 @@ class NiddlerServerAnnouncementManager {
 
   static Future<void> _handleAnnounce(Stream<List<int>> socket, Future done,
       List<int> initialData, List<_Slave> slaves) async {
+    niddlerVerbosePrint('Got slave announce');
     final allDataBlobs = await socket.toList();
     final allData = List<int>()
       ..addAll(initialData.getRange(1, initialData.length));
@@ -230,6 +237,7 @@ class NiddlerServerAnnouncementManager {
       protocolVersion,
       extensions,
     );
+    niddlerVerbosePrint('Got new slave: $packageName on $port');
     slaves.add(slave);
     // ignore: unawaited_futures
     done.then((_) => slaves.remove(slave));
@@ -237,6 +245,7 @@ class NiddlerServerAnnouncementManager {
   }
 
   Future<void> _runSlave() async {
+    niddlerVerbosePrint('Connecting slave socket');
     final slaveSocket = await Socket.connect(
         InternetAddress.loopbackIPv4, _ANNOUNCEMENT_SOCKET_PORT);
     final doContinue = await lock.synchronized(() async {
@@ -271,7 +280,7 @@ class NiddlerServerAnnouncementManager {
     offset += 4;
     byteView.setInt32(offset, -1); //PID
     offset += 4;
-    byteView.setInt32(offset, _server.protocolVersion);
+    byteView.setInt32(offset, NiddlerServer.protocolVersion);
     offset += 4;
     byteView.setInt16(offset, _extensions.length);
     offset += 2;
@@ -285,8 +294,11 @@ class NiddlerServerAnnouncementManager {
       offset += extension.length();
     });
 
+    niddlerVerbosePrint('Sending slave data');
     slaveSocket.add(data);
+    niddlerVerbosePrint('Closing slave');
     await slaveSocket.close();
+    niddlerVerbosePrint('Slave closed');
     await lock.synchronized(() async {
       _slaveSocket = null;
     });

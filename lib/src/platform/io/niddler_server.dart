@@ -8,7 +8,6 @@ import 'dart:math';
 
 import 'package:niddler_dart/niddler_dart.dart';
 import 'package:niddler_dart/src/platform/debugger/niddler_debugger.dart';
-import 'package:niddler_dart/src/platform/io/niddler_io.dart';
 import 'package:pointycastle/digests/sha512.dart';
 import 'package:synchronized/synchronized.dart';
 import 'package:uuid/uuid.dart';
@@ -33,7 +32,7 @@ class NiddlerServer {
   final NiddlerDebuggerImpl _debugger = NiddlerDebuggerImpl();
   final String tag = Uuid().v4().substring(0, 6);
 
-  final int protocolVersion = 4; //Debugging support
+  static const int protocolVersion = 4; //Debugging support
 
   int get port => _server.port;
 

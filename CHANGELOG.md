@@ -1,3 +1,8 @@
+## 0.7.4
+
+- Expose logging functions
+- Fixes for headers not intercepting correctly
+
 ## 0.7.3
 
 - Niddler announcement v3 support

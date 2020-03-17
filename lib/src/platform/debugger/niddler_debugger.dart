@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:niddler_dart/niddler_dart.dart';
-import 'package:niddler_dart/src/platform/io/niddler_io.dart';
 import 'package:niddler_dart/src/platform/io/niddler_server.dart';
 
 class NiddlerDebuggerImpl implements NiddlerDebugger {

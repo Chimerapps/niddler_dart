@@ -813,10 +813,15 @@ class _SimpleHeaders implements HttpHeaders {
   final _noFolding = List<String>();
 
   void applyHeaders(HttpHeaders to) {
-    to
-      ..chunkedTransferEncoding = chunkedTransferEncoding
-      ..contentLength = contentLength
-      ..contentType = contentType;
+    if (chunkedTransferEncoding) {
+      to.chunkedTransferEncoding = chunkedTransferEncoding;
+    }
+    if (contentLength != -1) {
+      to.contentLength = contentLength;
+    }
+    if (contentType != null) {
+      to.contentType = contentType;
+    }
 
     if (date != null) to.date = date;
     if (expires != null) to.expires = expires;
@@ -837,7 +842,15 @@ class _SimpleHeaders implements HttpHeaders {
 
   @override
   void add(String name, Object value) {
-    _headers.putIfAbsent(name.toLowerCase(), () => List<String>()).add(value);
+    final target =
+        _headers.putIfAbsent(name.toLowerCase(), () => List<String>());
+    if (value is List) {
+      value.forEach((item) => add(name, item));
+    } else if (value is DateTime) {
+      target.add(HttpDate.format(value));
+    } else {
+      target.add(value.toString());
+    }
   }
 
   @override
