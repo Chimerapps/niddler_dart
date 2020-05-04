@@ -107,8 +107,7 @@ class _NiddlerHttpClient implements HttpClient {
 
   @override
   Future<HttpClientRequest> delete(String host, int port, String path) {
-    final deleteRequest = _delegate.delete(host, port, path);
-    return deleteRequest;
+    return open('delete', host, port, path);
   }
 
   @override
@@ -123,33 +122,28 @@ class _NiddlerHttpClient implements HttpClient {
 
   @override
   Future<HttpClientRequest> get(String host, int port, String path) {
-    final getRequest = _delegate.get(host, port, path);
-    return getRequest;
+    return getUrl(_createUri(host, port, path));
   }
 
   @override
   Future<HttpClientRequest> getUrl(Uri url) {
-    final getRequest = _delegate.getUrl(url);
-    return getRequest;
+    return openUrl('get', url);
   }
 
   @override
   Future<HttpClientRequest> head(String host, int port, String path) {
-    final headRequest = _delegate.head(host, port, path);
-    return headRequest;
+    return headUrl(_createUri(host, port, path));
   }
 
   @override
   Future<HttpClientRequest> headUrl(Uri url) {
-    final headRequest = _delegate.headUrl(url);
-    return headRequest;
+    return openUrl('head', url);
   }
 
   @override
   Future<HttpClientRequest> open(
       String method, String host, int port, String path) {
-    final openRequest = _delegate.open(method, host, port, path);
-    return openRequest;
+    return openUrl(method, _createUri(host, port, path));
   }
 
   @override
@@ -165,38 +159,56 @@ class _NiddlerHttpClient implements HttpClient {
 
   @override
   Future<HttpClientRequest> patch(String host, int port, String path) {
-    final patchRequest = _delegate.patch(host, port, path);
-    return patchRequest;
+    return patchUrl(_createUri(host, port, path));
   }
 
   @override
   Future<HttpClientRequest> patchUrl(Uri url) {
-    final patchRequest = _delegate.patchUrl(url);
-    return patchRequest;
+    return openUrl('patch', url);
   }
 
   @override
   Future<HttpClientRequest> post(String host, int port, String path) {
-    final postRequest = _delegate.post(host, port, path);
-    return postRequest;
+    return postUrl(_createUri(host, port, path));
   }
 
   @override
   Future<HttpClientRequest> postUrl(Uri url) {
-    final postRequest = _delegate.postUrl(url);
-    return postRequest;
+    return openUrl('post', url);
   }
 
   @override
   Future<HttpClientRequest> put(String host, int port, String path) {
-    final putRequest = _delegate.put(host, port, path);
-    return putRequest;
+    return putUrl(_createUri(host, port, path));
   }
 
   @override
   Future<HttpClientRequest> putUrl(Uri url) {
-    final putRequest = _delegate.putUrl(url);
-    return putRequest;
+    return openUrl('put', url);
+  }
+
+  Uri _createUri(String host, int port, String path) {
+    const hashMark = 0x23;
+    const questionMark = 0x3f;
+    var fragmentStart = path.length;
+    var queryStart = path.length;
+    for (var i = path.length - 1; i >= 0; i--) {
+      final char = path.codeUnitAt(i);
+      if (char == hashMark) {
+        fragmentStart = i;
+        queryStart = i;
+      } else if (char == questionMark) {
+        queryStart = i;
+      }
+    }
+    String query;
+    var newPath = path;
+    if (queryStart < fragmentStart) {
+      query = path.substring(queryStart + 1, fragmentStart);
+      newPath = path.substring(0, queryStart);
+    }
+    return Uri(
+        scheme: 'http', host: host, port: port, path: newPath, query: query);
   }
 }
 

@@ -1,3 +1,7 @@
+## 0.7.5
+
+- Implement some missing bindings on HttpClient for eg: getUrl, postUrl, ...
+
 ## 0.7.4
 
 - Expose logging functions
