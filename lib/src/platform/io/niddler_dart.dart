@@ -853,11 +853,12 @@ class _SimpleHeaders implements HttpHeaders {
   }
 
   @override
-  void add(String name, Object value) {
-    final target =
-        _headers.putIfAbsent(name.toLowerCase(), () => List<String>());
+  void add(String name, Object value, {bool preserveHeaderCase = false}) {
+    final target = _headers.putIfAbsent(
+        preserveHeaderCase ? name : name.toLowerCase(), () => List<String>());
     if (value is List) {
-      value.forEach((item) => add(name, item));
+      value.forEach(
+          (item) => add(name, item, preserveHeaderCase: preserveHeaderCase));
     } else if (value is DateTime) {
       target.add(HttpDate.format(value));
     } else {
@@ -891,8 +892,9 @@ class _SimpleHeaders implements HttpHeaders {
   }
 
   @override
-  void set(String name, Object value) {
-    _headers[name.toLowerCase()] = List()..add(value);
+  void set(String name, Object value, {bool preserveHeaderCase = false}) {
+    _headers[preserveHeaderCase ? name : name.toLowerCase()] = List()
+      ..add(value);
   }
 
   @override

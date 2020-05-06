@@ -30,7 +30,7 @@ Future<void> main(List<String> arguments) async {
     await executePost2();
     await getImage();
 
-    const waitDuration = Duration(seconds: 10);
+    const waitDuration = Duration(seconds: 1000000);
 
     print('Asking niddler to stop for $waitDuration');
 
