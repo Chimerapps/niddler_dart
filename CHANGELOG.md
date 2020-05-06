@@ -1,3 +1,7 @@
+## 0.8.0
+
+- Support dart 2.8.0
+
 ## 0.7.5
 
 - Implement some missing bindings on HttpClient for eg: getUrl, postUrl, ...
