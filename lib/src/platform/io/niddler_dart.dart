@@ -242,7 +242,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   @override
   var maxRedirects = 5;
   @override
-  final cookies = List<Cookie>();
+  final cookies = <Cookie>[];
 
   @override
   HttpConnectionInfo get connectionInfo => _executingRequest.connectionInfo;
@@ -275,7 +275,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   @override
   void add(List<int> data) {
-    requestBodyBytes ??= List<List<int>>();
+    requestBodyBytes ??= <List<int>>[];
     requestBodyBytes.add(data);
   }
 
@@ -299,7 +299,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       messageId: Uuid().v4(),
       requestId: requestId,
       timeStamp: _requestTime,
-      headers: Map<String, List<String>>(),
+      headers: <String, List<String>>{},
     );
     headers.forEach((key, values) => _originalRequest.headers[key] = values);
 
@@ -377,7 +377,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   Future<HttpClientResponse> _handleResponse(
       NiddlerRequest request, HttpClientResponse originalResponse) {
-    final responseHeaders = Map<String, List<String>>();
+    final responseHeaders = <String, List<String>>{};
     originalResponse.headers
         .forEach((key, value) => responseHeaders[key] = value);
     final initialNiddlerResponse = NiddlerResponse(
@@ -424,7 +424,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     final cookies = newHeaders['set-cookie']
             ?.map((value) => Cookie.fromSetCookieValue(value))
             ?.toList() ??
-        List();
+        [];
 
     final changedNiddlerResponse = NiddlerResponse(
       statusCode: debuggerResponse.code,
@@ -434,7 +434,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       readTime: -1,
       waitTime: -1,
       timeStamp: initialNiddlerResponse.timeStamp,
-      headers: debuggerResponse.headers ?? Map<String, List<String>>(),
+      headers: debuggerResponse.headers ?? <String, List<String>>{},
       messageId: initialNiddlerResponse.messageId,
       requestId: requestId,
     );
@@ -483,7 +483,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   }
 
   @override
-  void writeCharCode(int charCode) => add(List()..add(charCode));
+  void writeCharCode(int charCode) => add([]..add(charCode));
 
   @override
   void writeln([Object obj = '']) => write('$obj\n');
@@ -499,7 +499,7 @@ class _IsolateData {
 
 void _encodeBodyJson(_IsolateData body) {
   if (body.body != null && body.body.isNotEmpty) {
-    final bodyBytes = List<int>();
+    final bodyBytes = <int>[];
     body.body.forEach(bodyBytes.addAll);
     if (bodyBytes.isNotEmpty) {
       body.message.body = const Base64Codec.urlSafe().encode(bodyBytes);
@@ -821,8 +821,8 @@ class _SimpleHeaders implements HttpHeaders {
   @override
   int port;
 
-  final _headers = Map<String, List<String>>();
-  final _noFolding = List<String>();
+  final _headers = <String, List<String>>{};
+  final _noFolding = <String>[];
 
   void applyHeaders(HttpHeaders to) {
     if (chunkedTransferEncoding) {
@@ -855,7 +855,7 @@ class _SimpleHeaders implements HttpHeaders {
   @override
   void add(String name, Object value, {bool preserveHeaderCase = false}) {
     final target = _headers.putIfAbsent(
-        preserveHeaderCase ? name : name.toLowerCase(), () => List<String>());
+        preserveHeaderCase ? name : name.toLowerCase(), () => <String>[]);
     if (value is List) {
       value.forEach(
           (item) => add(name, item, preserveHeaderCase: preserveHeaderCase));
@@ -893,8 +893,7 @@ class _SimpleHeaders implements HttpHeaders {
 
   @override
   void set(String name, Object value, {bool preserveHeaderCase = false}) {
-    _headers[preserveHeaderCase ? name : name.toLowerCase()] = List()
-      ..add(value);
+    _headers[preserveHeaderCase ? name : name.toLowerCase()] = []..add(value);
   }
 
   @override

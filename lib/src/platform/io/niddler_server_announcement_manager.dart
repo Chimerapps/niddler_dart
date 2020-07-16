@@ -23,7 +23,7 @@ const int EXTENSION_TYPE_TAG = 2;
 /// These announcements allow clients to discover all processes which currently have niddler enabled.
 class NiddlerServerAnnouncementManager {
   final String _packageName;
-  final _extensions = List<AnnouncementExtension>();
+  final _extensions = <AnnouncementExtension>[];
 
   final NiddlerServer _server;
   final lock = Lock();
@@ -48,7 +48,7 @@ class NiddlerServerAnnouncementManager {
   }
 
   void _startLoop() {
-    final _slaves = List<_Slave>();
+    final _slaves = <_Slave>[];
 
     Future.doWhile(() async {
       final streamer = StreamController();
@@ -140,9 +140,9 @@ class NiddlerServerAnnouncementManager {
   Future<List<int>> _handleQuery(
       Stream<List<int>> socket, List<_Slave> slaves) async {
     niddlerVerbosePrint('Got query request');
-    final responses = List<Map<String, dynamic>>();
+    final responses = <Map<String, dynamic>>[];
 
-    final responseData = Map<String, dynamic>();
+    final responseData = <String, dynamic>{};
     responseData['packageName'] = _packageName;
     responseData['port'] = _server.port;
     responseData['pid'] = -1;
@@ -156,7 +156,7 @@ class NiddlerServerAnnouncementManager {
     responses.add(responseData);
 
     slaves.forEach((slave) {
-      final slaveDescriptor = Map<String, dynamic>();
+      final slaveDescriptor = <String, dynamic>{};
       slaveDescriptor['packageName'] = slave.packageName;
       slaveDescriptor['port'] = slave.port;
       slaveDescriptor['pid'] = slave.pid;
@@ -176,8 +176,7 @@ class NiddlerServerAnnouncementManager {
       List<int> initialData, List<_Slave> slaves) async {
     niddlerVerbosePrint('Got slave announce');
     final allDataBlobs = await socket.toList();
-    final allData = List<int>()
-      ..addAll(initialData.getRange(1, initialData.length));
+    final allData = <int>[...initialData.getRange(1, initialData.length)];
     allDataBlobs.forEach(allData.addAll);
 
     final byteBuffer = Int8List.fromList(allData).buffer;
@@ -198,7 +197,7 @@ class NiddlerServerAnnouncementManager {
     final protocolVersion = byteView.getInt32(offset);
     offset += 4;
 
-    final extensions = List<AnnouncementExtension>();
+    final extensions = <AnnouncementExtension>[];
     String icon;
     if (version == 2) {
       final iconLength = byteView.getInt32(offset);

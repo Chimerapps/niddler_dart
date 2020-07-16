@@ -9,7 +9,7 @@ class NiddlerMessageCache {
   final int _maxCacheSize;
   int _cacheSize = 0;
   final _lock = Lock();
-  final List<String> _messages = List();
+  final List<String> _messages = [];
 
   NiddlerMessageCache(this._maxCacheSize);
 

@@ -28,7 +28,7 @@ class NiddlerServer {
   final String _bundleId;
   final String _password;
   final _lock = Lock();
-  final List<NiddlerConnection> _connections = List();
+  final List<NiddlerConnection> _connections = [];
   final NiddlerDebuggerImpl _debugger = NiddlerDebuggerImpl();
   final String tag = Uuid().v4().substring(0, 6);
 

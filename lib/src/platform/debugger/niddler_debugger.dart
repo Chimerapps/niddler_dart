@@ -152,7 +152,7 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
 
     // ignore: avoid_as
     final headersMap = body as Map<String, dynamic>;
-    final finalHeaders = Map<String, List<String>>();
+    final finalHeaders = <String, List<String>>{};
     headersMap.forEach((key, items) {
       // ignore: avoid_as
       finalHeaders[key] = (items as List).map((f) => f.toString()).toList();
@@ -163,10 +163,10 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
 
 class _NiddlerDebuggerConfiguration {
   final NiddlerDebuggerImpl _debugger;
-  final _waitingRequests = Map<String, Completer<DebugRequest>>();
-  final _waitingResponses = Map<String, Completer<DebugResponse>>();
-  final _requestOverrides = List<_RequestOverrideAction>();
-  final _responseOverrides = List<_ResponseOverrideAction>();
+  final _waitingRequests = <String, Completer<DebugRequest>>{};
+  final _waitingResponses = <String, Completer<DebugResponse>>{};
+  final _requestOverrides = <_RequestOverrideAction>[];
+  final _responseOverrides = <_ResponseOverrideAction>[];
 
   bool isActive = false;
 
@@ -187,7 +187,7 @@ class _NiddlerDebuggerConfiguration {
     _waitingRequests[request.messageId] = completer;
 
     //TODO isolate json encoding
-    final jsonEnvelope = Map<String, dynamic>();
+    final jsonEnvelope = <String, dynamic>{};
     jsonEnvelope['type'] = 'debugRequest';
     jsonEnvelope['request'] = request.toJson();
 
@@ -204,7 +204,7 @@ class _NiddlerDebuggerConfiguration {
     _waitingResponses[request.messageId] = completer;
 
     //TODO isolate json encoding
-    final jsonEnvelope = Map<String, dynamic>();
+    final jsonEnvelope = <String, dynamic>{};
     jsonEnvelope['type'] = 'debugRequest';
     jsonEnvelope['requestId'] = request.messageId;
     jsonEnvelope['response'] = response.toJson();
@@ -361,7 +361,7 @@ abstract class _DebugAction {
 void _serializeBodyIfRequired(
     NiddlerMessageBase message, List<List<int>> bodyBytes) {
   if (message.body == null && bodyBytes != null && bodyBytes.isNotEmpty) {
-    final mappedBodyBytes = List<int>();
+    final mappedBodyBytes = <int>[];
     bodyBytes.forEach(mappedBodyBytes.addAll);
     if (mappedBodyBytes.isNotEmpty) {
       message.body = const Base64Codec.urlSafe().encode(mappedBodyBytes);

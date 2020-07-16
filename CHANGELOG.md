@@ -1,3 +1,7 @@
+## 0.8.1
+
+- Code cleanup
+
 ## 0.8.0
 
 - Support dart 2.8.0

@@ -63,7 +63,7 @@ class NiddlerRequest extends NiddlerMessageBase {
 
   /// Converts this request to a json object
   dynamic toJson() {
-    final data = Map<String, dynamic>();
+    final data = <String, dynamic>{};
     data['type'] = 'request';
     data['method'] = method;
     data['url'] = url;
@@ -125,7 +125,7 @@ class NiddlerResponse extends NiddlerMessageBase {
 
   /// Converts the response to a json object
   dynamic toJson() {
-    final data = Map<String, dynamic>();
+    final data = <String, dynamic>{};
 
     data['type'] = 'response';
     data['statusCode'] = statusCode;
