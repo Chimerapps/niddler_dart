@@ -8,21 +8,23 @@ Future<void> main(List<String> arguments) async {
   await Chain.capture(() async {
     final niddlerBuilder = NiddlerBuilder()
       ..bundleId = 'com.test.test'
-      ..serverInfo =
-          NiddlerServerInfo('Some descriptive name', 'Some description', icon: 'dart')
+      ..serverInfo = NiddlerServerInfo(
+          'Some descriptive name', 'Some description', icon: 'dart')
       ..includeStackTrace = true
       ..port =
           0; //0 to have niddler pick it's own port. Automatic discovery will make this visible
 
     final niddler = niddlerBuilder.build()..addBlacklist(RegExp('.*/get'));
-    await niddler.start();
-    niddler.install();
 
     if (arguments.isNotEmpty) {
-      print('Waiting for debugger');
-      await niddler.debugger.waitForConnection();
+      print('Starting and waiting for debugger');
+    }
+
+    await niddler.start(waitForDebugger: arguments.isNotEmpty);
+    if (arguments.isNotEmpty) {
       print('Debugger connected!');
     }
+    niddler.install();
 
     await executeGetTypeCode();
     await executePost1();

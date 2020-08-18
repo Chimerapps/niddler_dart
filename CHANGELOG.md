@@ -1,3 +1,7 @@
+## 0.9.0
+
+- Allow signaling that the system should wait for the debugger connection in niddler.start. This has the advantage of providing more information to the IDE plugin.
+
 ## 0.8.1
 
 - Code cleanup

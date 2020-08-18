@@ -40,7 +40,7 @@ class NiddlerNoop implements Niddler {
   void logResponseJson(String response) {}
 
   @override
-  Future<bool> start() => Future.value(true);
+  Future<bool> start({bool waitForDebugger = false}) => Future.value(true);
 
   @override
   Future<void> stop() => Future.value(null);

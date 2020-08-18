@@ -42,7 +42,7 @@ abstract class Niddler {
   bool isBlacklisted(String url);
 
   /// Starts the server
-  Future<bool> start();
+  Future<bool> start({bool waitForDebugger = false});
 
   /// Stops the server
   Future<void> stop();

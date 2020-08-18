@@ -87,8 +87,8 @@ class NiddlerImpl implements Niddler {
 
   /// Starts the server
   @override
-  Future<bool> start() async {
-    return _implementation.start();
+  Future<bool> start({bool waitForDebugger = false}) async {
+    return _implementation.start(waitForDebugger: waitForDebugger);
   }
 
   /// Stops the server
@@ -148,10 +148,13 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
     _server.sendToAll(message);
   }
 
-  Future<bool> start() async {
+  Future<bool> start({bool waitForDebugger}) async {
     _started = true;
-    await _server.start();
+    await _server.start(waitForDebugger: waitForDebugger);
     await _announcementManager.start();
+    if (waitForDebugger) {
+      await _server.debugger.waitForConnection();
+    }
     return true;
   }
 

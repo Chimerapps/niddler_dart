@@ -22,9 +22,11 @@ main() async {
   
       final niddler = niddlerBuilder.build();
       await niddler.start();
+      //Or if you want to use the debugger and wait for a connection
+      await niddler.start(waitForDebugger: true);
       niddler.install();
   
-      //Optionally wait for debugger to connect
+      //Optionally wait for debugger to connect at a later time. The niddler.start(waitForDebugger: ...) is preferred
       await niddler.debugger.waitForConnection();
     
       //Make http requests ...
@@ -37,7 +39,7 @@ main() async {
 ## Debugging support
 Since 0.7.0 basic debugging support has been added to the library. Use the plugin to connect with a debugger connection. 
 When so required, you can wait for the debugger to be connected before continuing with the application, to ensure the debugger is attached before
-any requests are made by using `await niddler.debugger.waitForConnection();`
+any requests are made by using (preferred) `await niddler.start(waitForDebugger: true);` or later `await niddler.debugger.waitForConnection();`
 
 Not that using the debugger has a more noticeable performance impact
 

@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:meta/meta.dart';
 import 'package:niddler_dart/niddler_dart.dart';
 import 'package:niddler_dart/src/platform/debugger/niddler_debugger.dart';
 import 'package:pointycastle/digests/sha512.dart';
@@ -43,10 +44,11 @@ class NiddlerServer {
   NiddlerServer(this._port, [this._bundleId, this._password]);
 
   /// Starts the server
-  Future<void> start() async {
+  Future<void> start({@required bool waitForDebugger}) async {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, _port)
       ..transform(WebSocketTransformer()).listen(_onNewConnection);
-    niddlerDebugPrint('Niddler Server running on ${_server.port} [$tag]');
+    niddlerDebugPrint(
+        'Niddler Server running on ${_server.port} [$tag][waitingForDebugger=$waitForDebugger]');
   }
 
   /// Stops the server
