@@ -1,3 +1,7 @@
+## 0.9.1
+
+- Include debugger action id when sending debug requests to the IDE
+
 ## 0.9.0
 
 - Allow signaling that the system should wait for the debugger connection in niddler.start. This has the advantage of providing more information to the IDE plugin.

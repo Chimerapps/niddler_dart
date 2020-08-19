@@ -110,19 +110,20 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
     }
   }
 
-  Future<DebugRequest> sendHandleRequestOverride(NiddlerRequest request) {
+  Future<DebugRequest> sendHandleRequestOverride(
+      String actionId, NiddlerRequest request) {
     if (_currentConnection == null) return Future.value(null);
 
     return _configuration.sendHandleRequestOverride(
-        request, _currentConnection);
+        actionId, request, _currentConnection);
   }
 
   Future<DebugResponse> sendHandleResponseOverride(
-      NiddlerRequest request, NiddlerResponse response) {
+      String actionId, NiddlerRequest request, NiddlerResponse response) {
     if (_currentConnection == null) return Future.value(null);
 
     return _configuration.sendHandleResponseOverride(
-        request, response, _currentConnection);
+        actionId, request, response, _currentConnection);
   }
 
   DebugRequest _parseRequestOverride(body) {
@@ -182,7 +183,7 @@ class _NiddlerDebuggerConfiguration {
   }
 
   Future<DebugRequest> sendHandleRequestOverride(
-      NiddlerRequest request, NiddlerConnection connection) {
+      String actionId, NiddlerRequest request, NiddlerConnection connection) {
     final completer = Completer<DebugRequest>();
     _waitingRequests[request.messageId] = completer;
 
@@ -190,6 +191,7 @@ class _NiddlerDebuggerConfiguration {
     final jsonEnvelope = <String, dynamic>{};
     jsonEnvelope['type'] = 'debugRequest';
     jsonEnvelope['request'] = request.toJson();
+    jsonEnvelope['actionId'] = actionId;
 
     final jsonMessage = json.encode(jsonEnvelope);
 
@@ -198,8 +200,11 @@ class _NiddlerDebuggerConfiguration {
     return completer.future;
   }
 
-  Future<DebugResponse> sendHandleResponseOverride(NiddlerRequest request,
-      NiddlerResponse response, NiddlerConnection connection) {
+  Future<DebugResponse> sendHandleResponseOverride(
+      String actionId,
+      NiddlerRequest request,
+      NiddlerResponse response,
+      NiddlerConnection connection) {
     final completer = Completer<DebugResponse>();
     _waitingResponses[request.messageId] = completer;
 
@@ -207,6 +212,7 @@ class _NiddlerDebuggerConfiguration {
     final jsonEnvelope = <String, dynamic>{};
     jsonEnvelope['type'] = 'debugRequest';
     jsonEnvelope['requestId'] = request.messageId;
+    jsonEnvelope['actionId'] = actionId;
     jsonEnvelope['response'] = response.toJson();
 
     final jsonMessage = json.encode(jsonEnvelope);
@@ -288,7 +294,7 @@ class _DebugRequestOverrideAction extends _RequestOverrideAction {
     }
 
     _serializeBodyIfRequired(request, nonSerializedBody);
-    return debugger.sendHandleRequestOverride(request);
+    return debugger.sendHandleRequestOverride(id, request);
   }
 }
 
@@ -323,7 +329,7 @@ class _DebugResponseOverrideAction extends _ResponseOverrideAction {
     }
 
     _serializeBodyIfRequired(response, nonSerializedBody);
-    return debugger.sendHandleResponseOverride(request, response);
+    return debugger.sendHandleResponseOverride(id, request, response);
   }
 }
 
