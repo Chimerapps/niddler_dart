@@ -376,7 +376,14 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     if (connectionHeader != null &&
         connectionHeader
                 .firstWhere((element) => element.toLowerCase() == 'upgrade') !=
-            null) return request.close();
+            null) {
+      return request.close().then((value) {
+        if (!_completer.isCompleted) {
+          _completer.complete(value);
+        }
+        return value;
+      });
+    }
 
     // ignore: unawaited_futures
     request

@@ -1,3 +1,7 @@
+## 0.10.1
+
+- Also notify done future when upgrading
+
 ## 0.10.0
 
 - Support dart 2.10 and up
