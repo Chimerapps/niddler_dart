@@ -1,3 +1,7 @@
+## 0.10.2
+
+- Remove dependency on pointycastle, replace with crypto package
+
 ## 0.10.1
 
 - Also notify done future when upgrading

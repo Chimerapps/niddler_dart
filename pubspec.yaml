@@ -1,13 +1,13 @@
 name: niddler_dart
 description: Niddler network inspector for dart and flutter! Use the niddler IntelliJ and Android Studio plugin to debug your network requests during development.
-version: 0.10.1
+version: 0.10.2
 homepage: https://github.com/Chimerapps/niddler_dart
 
 environment:
   sdk: '>=2.10.0 <3.0.0'
 
 dependencies:
-  pointycastle: ^1.0.1
+  crypto: ^2.1.5
   synchronized: ^2.1.0
   uuid: ^2.0.1
   stack_trace: ^1.9.3

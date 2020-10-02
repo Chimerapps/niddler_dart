@@ -6,10 +6,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:meta/meta.dart';
 import 'package:niddler_dart/niddler_dart.dart';
 import 'package:niddler_dart/src/platform/debugger/niddler_debugger.dart';
-import 'package:pointycastle/digests/sha512.dart';
 import 'package:synchronized/synchronized.dart';
 import 'package:uuid/uuid.dart';
 
@@ -162,9 +162,10 @@ class NiddlerConnection {
       _socket.close(1000);
       return;
     }
-    final shaDigest = SHA512Digest();
-    final base64Data = base64Encode(shaDigest
-        .process(utf8.encode(_currentAuthRequestData + _currentPassword)));
+    final shaDigest = sha512
+        .convert(utf8.encode(_currentAuthRequestData + _currentPassword))
+        .bytes;
+    final base64Data = base64Encode(shaDigest);
     if (hashKey == base64Data) {
       onAuthSuccess();
     } else {
