@@ -291,6 +291,14 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   }
 
   @override
+  void abort([Object exception, StackTrace stackTrace]) {
+    if (!_completer.isCompleted) {
+      _completer.completeError(exception ?? const HttpException('Aborted'),
+          stackTrace ?? StackTrace.empty);
+    }
+  }
+
+  @override
   Future<HttpClientResponse> close() async {
     final _originalRequest = NiddlerRequest(
       url: uri.toString(),
@@ -370,9 +378,17 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
                 .firstWhere((element) => element.toLowerCase() == 'upgrade') !=
             null) return request.close();
 
-    return request
+    // ignore: unawaited_futures
+    request
         .close()
-        .then((response) => _handleResponse(_originalRequest, response));
+        .then((response) => _handleResponse(_originalRequest, response))
+        .then((value) {
+      if (!_completer.isCompleted) {
+        _completer.complete(value);
+      }
+    });
+
+    return _completer.future;
   }
 
   Future<HttpClientResponse> _handleResponse(

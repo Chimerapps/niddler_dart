@@ -1,3 +1,7 @@
+## 0.10.0
+
+- Support dart 2.10 and up
+
 ## 0.9.1
 
 - Include debugger action id when sending debug requests to the IDE
