@@ -52,6 +52,7 @@ class NiddlerServerAnnouncementManager {
 
     Future.doWhile(() async {
       final streamer = StreamController();
+      var awaitStreamer = true;
       try {
         niddlerVerbosePrint('Attempting to start in master mode');
         final serverSocket = await ServerSocket.bind(
@@ -81,19 +82,22 @@ class NiddlerServerAnnouncementManager {
         niddlerVerbosePrint('Got error in master mode, trying as slave');
         try {
           if (await lock.synchronized(() => _running)) {
+            awaitStreamer = false;
             await _runSlave();
-            streamer.add(2);
-            await streamer.close();
+            niddlerVerbosePrint('Run slave has returned');
           }
         } catch (e) {
           niddlerVerbosePrint('Got error in slave mode');
-          streamer.add(1);
-          await streamer.close();
+          awaitStreamer = false;
         } finally {
           await Future.delayed(const Duration(seconds: 1));
         }
       }
-      await streamer.stream.first;
+      if (awaitStreamer) {
+        niddlerVerbosePrint('Awaiting run loop results');
+        final data = await streamer.stream.first;
+        niddlerVerbosePrint('Run loop finished a loop with $data');
+      }
 
       return lock.synchronized(() => _running);
     });
@@ -133,7 +137,7 @@ class NiddlerServerAnnouncementManager {
       await socket.flush();
       await socket.close();
     } else if (command == _COMMAND_REQUEST_ANNOUNCE) {
-      await _handleAnnounce(dataStream, socket.done, data, slaves);
+      await _handleAnnounce(dataStream, socket, data, slaves);
     }
   }
 
@@ -172,51 +176,33 @@ class NiddlerServerAnnouncementManager {
     return utf8.encode(json.encode(responses));
   }
 
-  static Future<void> _handleAnnounce(Stream<List<int>> socket, Future done,
+  static Future<void> _handleAnnounce(Stream<List<int>> socket, Socket done,
       List<int> initialData, List<_Slave> slaves) async {
     niddlerVerbosePrint('Got slave announce');
-    final allDataBlobs = await socket.toList();
-    final allData = <int>[...initialData.getRange(1, initialData.length)];
-    allDataBlobs.forEach(allData.addAll);
 
-    final byteBuffer = Int8List.fromList(allData).buffer;
-    final byteView = ByteData.view(byteBuffer);
+    final byteView = _SocketByteView(initialData, socket);
 
-    var offset = 0;
-    final version = byteView.getInt32(offset);
-    offset += 4;
-    final packageNameLength = byteView.getInt32(offset);
-    offset += 4;
-    final packageName =
-        utf8.decode(byteBuffer.asInt8List(offset, packageNameLength));
-    offset += packageNameLength;
-    final port = byteView.getInt32(offset);
-    offset += 4;
-    final pid = byteView.getInt32(offset);
-    offset += 4;
-    final protocolVersion = byteView.getInt32(offset);
-    offset += 4;
+    final version = await byteView.getInt32();
+    final packageNameLength = await byteView.getInt32();
+    final packageName = utf8.decode(await byteView.getBytes(packageNameLength));
+    final port = await byteView.getInt32();
+    final pid = await byteView.getInt32();
+    final protocolVersion = await byteView.getInt32();
 
     final extensions = <AnnouncementExtension>[];
     String icon;
     if (version == 2) {
-      final iconLength = byteView.getInt32(offset);
-      offset += 4;
+      final iconLength = await byteView.getInt32();
       if (iconLength > 0) {
-        icon = utf8.decode(byteBuffer.asInt8List(offset, iconLength));
-        offset += iconLength;
+        icon = utf8.decode(await byteView.getBytes(iconLength));
       }
       extensions.add(IconExtension(icon));
     } else if (version >= _ANNOUNCEMENT_VERSION) {
-      final extensionCount = byteView.getInt16(offset);
-      offset += 2;
+      final extensionCount = await byteView.getInt16();
       for (var i = 0; i < extensionCount; ++i) {
-        final type = byteView.getInt16(offset);
-        offset += 2;
-        final size = byteView.getInt16(offset);
-        offset += 2;
-        final extensionBytes = byteBuffer.asInt8List(offset, size);
-        offset += size;
+        final type = await byteView.getInt16();
+        final size = await byteView.getInt16();
+        final extensionBytes = await byteView.getBytes(size);
 
         switch (type) {
           case EXTENSION_TYPE_TAG:
@@ -239,7 +225,10 @@ class NiddlerServerAnnouncementManager {
     niddlerVerbosePrint('Got new slave: $packageName on $port');
     slaves.add(slave);
     // ignore: unawaited_futures
-    done.then((_) => slaves.remove(slave));
+    socket.drain().then((_) {
+      print('Slave at $port closed');
+      return slaves.remove(slave);
+    });
     return;
   }
 
@@ -295,12 +284,29 @@ class NiddlerServerAnnouncementManager {
 
     niddlerVerbosePrint('Sending slave data');
     slaveSocket.add(data);
-    niddlerVerbosePrint('Closing slave');
-    await slaveSocket.close();
-    niddlerVerbosePrint('Slave closed');
-    await lock.synchronized(() async {
-      _slaveSocket = null;
+    niddlerVerbosePrint('Flushing slave data');
+    await slaveSocket.flush();
+    niddlerVerbosePrint('Waiting for slave socket to close');
+    slaveSocket.drain().then((value) async {
+      // ignore: unawaited_futures
+      niddlerVerbosePrint('Master seems to have gone away! Closing slave');
+      await slaveSocket.close();
+      niddlerVerbosePrint('Slave closed for master');
+
+      await lock.synchronized(() async {
+        _slaveSocket = null;
+      });
     });
+    await slaveSocket.done.then((value) async {
+      niddlerVerbosePrint('Closing slave');
+      await slaveSocket.close();
+      niddlerVerbosePrint('Slave closed');
+
+      await lock.synchronized(() async {
+        _slaveSocket = null;
+      });
+    });
+    niddlerVerbosePrint('Run slave existing');
   }
 }
 
@@ -351,4 +357,46 @@ class TagExtension extends StringExtension {
 
 class IconExtension extends StringExtension {
   IconExtension(String tag) : super(EXTENSION_TYPE_ICON, 'icon', tag);
+}
+
+class _SocketByteView {
+  final Stream<List<int>> _socket;
+  List<int> _currentBlob;
+  int _offsetInCurrentBlob = 1;
+
+  _SocketByteView(this._currentBlob, this._socket);
+
+  Future<int> getInt32() async {
+    final list = Int8List(4);
+    list[0] = await getByte();
+    list[1] = await getByte();
+    list[2] = await getByte();
+    list[3] = await getByte();
+    return ByteData.view(list.buffer).getInt32(0);
+  }
+
+  Future<int> getInt16() async {
+    final list = Int8List(2);
+    list[0] = await getByte();
+    list[1] = await getByte();
+    return ByteData.view(list.buffer).getInt16(0);
+  }
+
+  Future<Int8List> getBytes(int length) async {
+    final list = Int8List(length);
+    for (var i = 0; i < length; ++i) {
+      list[i] = await getByte();
+    }
+    return list;
+  }
+
+  Future<int> getByte() async {
+    if (_currentBlob != null && _offsetInCurrentBlob < _currentBlob.length)
+      return _currentBlob[_offsetInCurrentBlob++];
+
+    _currentBlob = await _socket.first;
+    _offsetInCurrentBlob = 0;
+
+    return getByte();
+  }
 }

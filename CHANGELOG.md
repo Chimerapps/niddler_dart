@@ -1,3 +1,7 @@
+## 0.10.3
+
+- Rewrote the connection handler to better detect dying main/secondaries
+
 ## 0.10.2
 
 - Remove dependency on pointycastle, replace with crypto package
