@@ -7,12 +7,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:dart_service_announcement/dart_service_announcement.dart';
 import 'package:niddler_dart/src/niddler_generic.dart';
 import 'package:niddler_dart/src/niddler_message.dart';
 import 'package:niddler_dart/src/niddler_message_cache.dart';
 import 'package:niddler_dart/src/platform/io/niddler_dart.dart';
 import 'package:niddler_dart/src/platform/io/niddler_server.dart';
-import 'package:niddler_dart/src/platform/io/niddler_server_announcement_manager.dart';
+
+const int _ANNOUNCEMENT_SOCKET_PORT = 6394;
 
 Niddler createNiddler(
   int maxCacheSize,
@@ -120,7 +122,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   final StackTraceSanitizer stackTraceSanitizer;
   final bool includeStackTraces;
   bool _started = false;
-  NiddlerServerAnnouncementManager _announcementManager;
+  BaseServerAnnouncementManager _announcementManager;
 
   _NiddlerImplementation(
     int maxCacheSize, {
@@ -133,7 +135,8 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   })  : _messagesCache = NiddlerMessageCache(maxCacheSize),
         _server = NiddlerServer(port, password, bundleId) {
     _server.connectionListener = this;
-    _announcementManager = NiddlerServerAnnouncementManager(bundleId, _server);
+    _announcementManager =
+        ServerAnnouncementManager(bundleId, _ANNOUNCEMENT_SOCKET_PORT, _server);
 
     if (serverInfo?.icon != null) {
       _announcementManager.addExtension(IconExtension(serverInfo.icon));

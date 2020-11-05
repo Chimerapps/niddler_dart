@@ -1,3 +1,7 @@
+## 0.10.4
+
+- Move to using `dart_service_announcement` for announcement 
+
 ## 0.10.3
 
 - Rewrote the connection handler to better detect dying main/secondaries

@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:dart_service_announcement/dart_service_announcement.dart';
 import 'package:meta/meta.dart';
 import 'package:niddler_dart/niddler_dart.dart';
 import 'package:niddler_dart/src/platform/debugger/niddler_debugger.dart';
@@ -23,7 +24,7 @@ abstract class NiddlerServerConnectionListener {
 }
 
 /// Server component of niddler. Starts a websocket server that is responsible for communicating with clients
-class NiddlerServer {
+class NiddlerServer extends ToolingServer {
   HttpServer _server;
   final int _port;
   final String _bundleId;
@@ -33,8 +34,10 @@ class NiddlerServer {
   final NiddlerDebuggerImpl _debugger = NiddlerDebuggerImpl();
   final String tag = Uuid().v4().substring(0, 6);
 
-  static const int protocolVersion = 4; //Debugging support
+  @override
+  int get protocolVersion => 4; //Debugging support
 
+  @override
   int get port => _server.port;
 
   NiddlerDebugger get debugger => _debugger;
