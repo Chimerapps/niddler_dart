@@ -8,7 +8,6 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:dart_service_announcement/dart_service_announcement.dart';
-import 'package:meta/meta.dart';
 import 'package:niddler_dart/niddler_dart.dart';
 import 'package:niddler_dart/src/platform/debugger/niddler_debugger.dart';
 import 'package:synchronized/synchronized.dart';
@@ -25,10 +24,10 @@ abstract class NiddlerServerConnectionListener {
 
 /// Server component of niddler. Starts a websocket server that is responsible for communicating with clients
 class NiddlerServer extends ToolingServer {
-  HttpServer _server;
+  HttpServer? _server;
   final int _port;
-  final String _bundleId;
-  final String _password;
+  final String? _bundleId;
+  final String? _password;
   final _lock = Lock();
   final List<NiddlerConnection> _connections = [];
   final NiddlerDebuggerImpl _debugger = NiddlerDebuggerImpl();
@@ -38,26 +37,29 @@ class NiddlerServer extends ToolingServer {
   int get protocolVersion => 4; //Debugging support
 
   @override
-  int get port => _server.port;
+  int get port => _server?.port ?? -1;
 
   NiddlerDebugger get debugger => _debugger;
 
-  NiddlerServerConnectionListener connectionListener;
+  late final NiddlerServerConnectionListener connectionListener;
 
   NiddlerServer(this._port, [this._bundleId, this._password]);
 
   /// Starts the server
-  Future<void> start({@required bool waitForDebugger}) async {
+  Future<void> start({required bool waitForDebugger}) async {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, _port)
       ..transform(WebSocketTransformer()).listen(_onNewConnection);
     niddlerDebugPrint(
-        'Niddler Server running on ${_server.port} [$tag][waitingForDebugger=$waitForDebugger]');
+        'Niddler Server running on $port [$tag][waitingForDebugger=$waitForDebugger]');
   }
 
   /// Stops the server
   Future<void> shutdown() async {
-    await _server.close(force: true);
+    final server = _server;
     _server = null;
+    if (server != null) {
+      await server.close(force: true);
+    }
     await _lock.synchronized(() async {
       _connections.forEach((socket) => socket.close());
     });
@@ -81,7 +83,7 @@ class NiddlerServer extends ToolingServer {
     });
 
     if (_password != null && _bundleId != null) {
-      connection.sendAuthRequest(_password, _bundleId);
+      connection.sendAuthRequest(_password!, _bundleId!);
     } else {
       connection.onAuthSuccess();
     }
@@ -106,8 +108,8 @@ class NiddlerConnection {
   final NiddlerServer _server;
   final NiddlerServerConnectionListener _connectionListener;
   bool _authenticated = false;
-  String _currentAuthRequestData;
-  String _currentPassword;
+  String? _currentAuthRequestData;
+  String? _currentPassword;
 
   NiddlerConnection(this._socket, this._connectionListener, this._server) {
     _socket.add('{"type":"protocol","protocolVersion":4}');
@@ -160,13 +162,15 @@ class NiddlerConnection {
     }
   }
 
-  void _handleAuthReply(String hashKey) {
-    if (_currentPassword == null || hashKey == null) {
+  void _handleAuthReply(String? hashKey) {
+    if (_currentPassword == null ||
+        hashKey == null ||
+        _currentAuthRequestData == null) {
       _socket.close(1000);
       return;
     }
     final shaDigest = sha512
-        .convert(utf8.encode(_currentAuthRequestData + _currentPassword))
+        .convert(utf8.encode(_currentAuthRequestData! + _currentPassword!))
         .bytes;
     final base64Data = base64Encode(shaDigest);
     if (hashKey == base64Data) {

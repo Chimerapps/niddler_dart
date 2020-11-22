@@ -8,10 +8,10 @@ import 'package:niddler_dart/src/niddler_generic.dart';
 Niddler createNiddler(
   int maxCacheSize,
   int port,
-  String password,
+  String? password,
   String bundleId,
-  NiddlerServerInfo serverInfo,
+  NiddlerServerInfo? serverInfo,
   StackTraceSanitizer sanitizer, {
-  bool includeStackTrace,
+  required bool includeStackTrace,
 }) =>
     throw UnsupportedError('Not supported');

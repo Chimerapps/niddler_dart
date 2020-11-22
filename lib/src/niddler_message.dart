@@ -4,8 +4,6 @@
 
 import 'dart:convert';
 
-import 'package:meta/meta.dart';
-
 /// Base for all niddler messages
 abstract class NiddlerMessageBase {
   /// Message id of the message. Must be unique over all messages
@@ -21,7 +19,7 @@ abstract class NiddlerMessageBase {
   final Map<String, List<String>> headers;
 
   /// Binary body of the message, encoded as Base64
-  String body;
+  String? body;
 
   /// Constructor
   NiddlerMessageBase(
@@ -45,20 +43,20 @@ class NiddlerRequest extends NiddlerMessageBase {
   final String url;
 
   /// The method of this request, can be a HTTP method or something else that describes your request (eg in websockets)
-  final String method;
+  final String? method;
 
   /// The stack traces of the call site that started the request. Can be null if not enabled
-  final List<String> stackTraces;
+  final List<String>? stackTraces;
 
   /// Constructor
   NiddlerRequest({
-    @required this.url,
-    @required this.method,
-    @required this.stackTraces,
-    @required String messageId,
-    @required String requestId,
-    @required int timeStamp,
-    @required Map<String, List<String>> headers,
+    required this.url,
+    required this.method,
+    required this.stackTraces,
+    required String messageId,
+    required String requestId,
+    required int timeStamp,
+    required Map<String, List<String>> headers,
   }) : super(messageId, requestId, timeStamp, headers);
 
   /// Converts this request to a json object
@@ -67,7 +65,7 @@ class NiddlerRequest extends NiddlerMessageBase {
     data['type'] = 'request';
     data['method'] = method;
     data['url'] = url;
-    if (stackTraces != null && stackTraces.isNotEmpty) {
+    if (stackTraces != null && stackTraces!.isNotEmpty) {
       data['trace'] = stackTraces;
     }
     updateJson(data);
@@ -90,13 +88,13 @@ class NiddlerResponse extends NiddlerMessageBase {
   final String statusLine;
 
   /// The http version of this request. Can be empty if unknown or non-http. If set, please use the standard notation: HTTP/1.1, ...
-  final String httpVersion;
+  final String? httpVersion;
 
   /// The actual network request that was sent over 'the wire'. Useful for when other interceptors modify the data after niddler has seen it. Can be null
-  final NiddlerRequest actualNetworkRequest;
+  final NiddlerRequest? actualNetworkRequest;
 
   /// The actual network response that was received over 'the wire'. Useful for when other interceptors modify the data after niddler has seen it. Can be null
-  final NiddlerResponse actualNetworkResponse;
+  final NiddlerResponse? actualNetworkResponse;
 
   /// The time it took to write the data to 'the wire'. If unknown, set to -1
   final int writeTime;
@@ -109,16 +107,16 @@ class NiddlerResponse extends NiddlerMessageBase {
 
   /// Constructor
   NiddlerResponse({
-    @required this.statusCode,
-    @required this.statusLine,
-    @required this.httpVersion,
-    @required this.writeTime,
-    @required this.readTime,
-    @required this.waitTime,
-    @required String messageId,
-    @required String requestId,
-    @required int timeStamp,
-    @required Map<String, List<String>> headers,
+    required this.statusCode,
+    required this.statusLine,
+    required this.httpVersion,
+    required this.writeTime,
+    required this.readTime,
+    required this.waitTime,
+    required String messageId,
+    required String requestId,
+    required int timeStamp,
+    required Map<String, List<String>> headers,
     this.actualNetworkRequest,
     this.actualNetworkResponse,
   }) : super(messageId, requestId, timeStamp, headers);
@@ -136,10 +134,10 @@ class NiddlerResponse extends NiddlerMessageBase {
     data['statusLine'] = statusLine;
 
     if (actualNetworkRequest != null) {
-      data['networkRequest'] = actualNetworkRequest.toJson();
+      data['networkRequest'] = actualNetworkRequest!.toJson();
     }
     if (actualNetworkResponse != null) {
-      data['networkReply'] = actualNetworkResponse.toJson();
+      data['networkReply'] = actualNetworkResponse!.toJson();
     }
     updateJson(data);
     return data;

@@ -12,7 +12,7 @@ Niddler createNiddler(
   String bundleId,
   NiddlerServerInfo serverInfo,
   StackTraceSanitizer sanitizer, {
-  bool includeStackTrace,
+  required bool includeStackTrace,
 }) =>
     const NiddlerNoop._();
 
@@ -62,12 +62,12 @@ class NiddlerDebuggerNoop implements NiddlerDebugger {
   Future<bool> waitForConnection() => Future.value(false);
 
   @override
-  Future<DebugRequest> overrideRequest(
-          NiddlerRequest request, List<List<int>> nonSerializedBody) =>
+  Future<DebugRequest?> overrideRequest(
+          NiddlerRequest request, List<List<int>>? nonSerializedBody) =>
       Future.value(null);
 
   @override
-  Future<DebugResponse> overrideResponse(NiddlerRequest request,
-          NiddlerResponse response, List<List<int>> nonSerializedBody) =>
+  Future<DebugResponse?> overrideResponse(NiddlerRequest request,
+          NiddlerResponse response, List<List<int>>? nonSerializedBody) =>
       Future.value(null);
 }

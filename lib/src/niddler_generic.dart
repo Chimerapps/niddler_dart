@@ -2,7 +2,6 @@
 // All rights reserved. Use of this source code is governed by
 // an MIT license that can be found in the LICENSE file.
 
-import 'package:meta/meta.dart';
 import 'package:niddler_dart/src/niddler_message.dart';
 import 'package:stack_trace/stack_trace.dart';
 
@@ -15,7 +14,7 @@ class NiddlerServerInfo {
   final String description;
 
   /// The icon to use for this server, WIP
-  final String icon;
+  final String? icon;
 
   NiddlerServerInfo(this.name, this.description, {this.icon});
 }
@@ -64,10 +63,10 @@ abstract class NiddlerDebugger {
 
   Future<bool> waitForConnection();
 
-  Future<DebugRequest> overrideRequest(
-      NiddlerRequest request, List<List<int>> nonSerializedBody);
+  Future<DebugRequest?> overrideRequest(
+      NiddlerRequest request, List<List<int>>? nonSerializedBody);
 
-  Future<DebugResponse> overrideResponse(
+  Future<DebugResponse?> overrideResponse(
     NiddlerRequest request,
     NiddlerResponse response,
     List<List<int>> nonSerializedBody,
@@ -78,13 +77,13 @@ class DebugRequest {
   final String url;
   final String method;
   final Map<String, List<String>> headers;
-  final String encodedBody;
-  final String bodyMimeType;
+  final String? encodedBody;
+  final String? bodyMimeType;
 
   DebugRequest({
-    @required this.url,
-    @required this.method,
-    this.headers,
+    required this.url,
+    required this.method,
+    required this.headers,
     this.encodedBody,
     this.bodyMimeType,
   });
@@ -94,13 +93,13 @@ class DebugResponse {
   final int code;
   final String message;
   final Map<String, List<String>> headers;
-  final String encodedBody;
-  final String bodyMimeType;
+  final String? encodedBody;
+  final String? bodyMimeType;
 
   DebugResponse({
-    @required this.code,
-    @required this.message,
-    this.headers,
+    required this.code,
+    required this.message,
+    required this.headers,
     this.encodedBody,
     this.bodyMimeType,
   });

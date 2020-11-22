@@ -15,10 +15,10 @@ import 'package:stack_trace/stack_trace.dart';
 ///  - cache size 1MB
 class NiddlerBuilder {
   /// The password to use to authenticate new clients (just authentication, no encryption). Leave empty to disable (default)
-  String password;
+  String? password;
 
   /// The bundle id of the application. Can be an iOS bundle id, android package name, ... Used to identify the application to the client
-  String bundleId;
+  String? bundleId;
 
   /// The port to run the server on. Set to 0 to allow niddler to pick a free port (default). A log will be printed with the active port
   int port = 0;
@@ -27,7 +27,7 @@ class NiddlerBuilder {
   int maxCacheSize = 1024 * 1024;
 
   /// Some cosmetic information about the server for the client
-  NiddlerServerInfo serverInfo;
+  NiddlerServerInfo? serverInfo;
 
   /// Include stack trace of the request
   bool includeStackTrace = false;
@@ -37,8 +37,12 @@ class NiddlerBuilder {
 
   /// Create the niddler instance
   Niddler build() {
+    final id = bundleId;
+    if (id == null) {
+      throw ArgumentError('bundleId must be set');
+    }
     return createNiddler(
-        maxCacheSize, port, password, bundleId, serverInfo, sanitizer,
+        maxCacheSize, port, password, id, serverInfo, sanitizer,
         includeStackTrace: includeStackTrace);
   }
 }

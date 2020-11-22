@@ -19,11 +19,11 @@ const int _ANNOUNCEMENT_SOCKET_PORT = 6394;
 Niddler createNiddler(
   int maxCacheSize,
   int port,
-  String password,
+  String? password,
   String bundleId,
-  NiddlerServerInfo serverInfo,
+  NiddlerServerInfo? serverInfo,
   StackTraceSanitizer sanitizer, {
-  bool includeStackTrace,
+  required bool includeStackTrace,
 }) =>
     NiddlerImpl._(maxCacheSize, port, password, bundleId, serverInfo, sanitizer,
         includeStackTrace: includeStackTrace);
@@ -36,11 +36,11 @@ class NiddlerImpl implements Niddler {
   NiddlerImpl._(
     int maxCacheSize,
     int port,
-    String password,
+    String? password,
     String bundleId,
-    NiddlerServerInfo serverInfo,
+    NiddlerServerInfo? serverInfo,
     StackTraceSanitizer sanitizer, {
-    bool includeStackTrace,
+    required bool includeStackTrace,
   }) : _implementation = _NiddlerImplementation(
           maxCacheSize,
           port: port,
@@ -116,22 +116,22 @@ class NiddlerImpl implements Niddler {
 class _NiddlerImplementation implements NiddlerServerConnectionListener {
   final NiddlerMessageCache _messagesCache;
   final NiddlerServer _server;
-  final NiddlerServerInfo serverInfo;
+  final NiddlerServerInfo? serverInfo;
   final List<RegExp> _blacklist = [];
   final int protocolVersion = 3;
   final StackTraceSanitizer stackTraceSanitizer;
   final bool includeStackTraces;
   bool _started = false;
-  BaseServerAnnouncementManager _announcementManager;
+  late final BaseServerAnnouncementManager _announcementManager;
 
   _NiddlerImplementation(
     int maxCacheSize, {
+    required this.stackTraceSanitizer,
+    required this.includeStackTraces,
+    required String bundleId,
     int port = 0,
-    String password,
-    String bundleId,
+    String? password,
     this.serverInfo,
-    this.stackTraceSanitizer,
-    this.includeStackTraces,
   })  : _messagesCache = NiddlerMessageCache(maxCacheSize),
         _server = NiddlerServer(port, password, bundleId) {
     _server.connectionListener = this;
@@ -139,7 +139,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
         ServerAnnouncementManager(bundleId, _ANNOUNCEMENT_SOCKET_PORT, _server);
 
     if (serverInfo?.icon != null) {
-      _announcementManager.addExtension(IconExtension(serverInfo.icon));
+      _announcementManager.addExtension(IconExtension(serverInfo!.icon!));
     }
     _announcementManager.addExtension(TagExtension(_server.tag));
   }
@@ -151,7 +151,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
     _server.sendToAll(message);
   }
 
-  Future<bool> start({bool waitForDebugger}) async {
+  Future<bool> start({bool waitForDebugger = false}) async {
     _started = true;
     await _server.start(waitForDebugger: waitForDebugger);
     await _announcementManager.start();
@@ -180,6 +180,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
 
   @override
   Future<void> onNewConnection(NiddlerConnection connection) async {
+    final serverInfo = this.serverInfo;
     if (serverInfo != null) {
       final data = {
         'type': 'serverInfo',
@@ -203,7 +204,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
       'type': 'staticBlacklist',
       'id': '<dart>',
       'name': '<dart>'
-    }; // ignore: omit_local_variable_types
+    };
     data['entries'] = _blacklist
         .map((regex) => {'pattern': regex.pattern, 'enabled': true})
         .toList();

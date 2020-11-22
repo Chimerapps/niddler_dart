@@ -12,8 +12,8 @@ NiddlerDebugPrintCallback niddlerDebugPrint = _niddlerDartDebugPrint;
 /// Function used to print verbose message from niddler. Defaults to no output
 NiddlerDebugPrintCallback niddlerVerbosePrint = _dontPrint;
 
-void _niddlerDartDebugPrint(String message, {int wrapWidth}) {
+void _niddlerDartDebugPrint(String message, {int? wrapWidth}) {
   print(message);
 }
 
-void _dontPrint(String message, {int wrapWidth}) {}
+void _dontPrint(String message, {int? wrapWidth}) {}
