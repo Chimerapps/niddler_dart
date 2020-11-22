@@ -19,13 +19,12 @@ const int _ANNOUNCEMENT_SOCKET_PORT = 6394;
 Niddler createNiddler(
   int maxCacheSize,
   int port,
-  String? password,
   String bundleId,
   NiddlerServerInfo? serverInfo,
   StackTraceSanitizer sanitizer, {
   required bool includeStackTrace,
 }) =>
-    NiddlerImpl._(maxCacheSize, port, password, bundleId, serverInfo, sanitizer,
+    NiddlerImpl._(maxCacheSize, port, bundleId, serverInfo, sanitizer,
         includeStackTrace: includeStackTrace);
 
 /// Heart of the consumer interface of niddler. Use this class to log custom requests and responses and to
@@ -36,7 +35,6 @@ class NiddlerImpl implements Niddler {
   NiddlerImpl._(
     int maxCacheSize,
     int port,
-    String? password,
     String bundleId,
     NiddlerServerInfo? serverInfo,
     StackTraceSanitizer sanitizer, {
@@ -44,7 +42,6 @@ class NiddlerImpl implements Niddler {
   }) : _implementation = _NiddlerImplementation(
           maxCacheSize,
           port: port,
-          password: password,
           bundleId: bundleId,
           serverInfo: serverInfo,
           stackTraceSanitizer: sanitizer,
@@ -130,10 +127,9 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
     required this.includeStackTraces,
     required String bundleId,
     int port = 0,
-    String? password,
     this.serverInfo,
   })  : _messagesCache = NiddlerMessageCache(maxCacheSize),
-        _server = NiddlerServer(port, password, bundleId) {
+        _server = NiddlerServer(port) {
     _server.connectionListener = this;
     _announcementManager =
         ServerAnnouncementManager(bundleId, _ANNOUNCEMENT_SOCKET_PORT, _server);

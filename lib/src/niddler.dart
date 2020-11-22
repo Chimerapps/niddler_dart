@@ -14,7 +14,9 @@ import 'package:stack_trace/stack_trace.dart';
 ///  - server port 0 (for automatic configuration)
 ///  - cache size 1MB
 class NiddlerBuilder {
+  /// NO LONGER SUPPORTED
   /// The password to use to authenticate new clients (just authentication, no encryption). Leave empty to disable (default)
+  @Deprecated('This feature is no longer supported')
   String? password;
 
   /// The bundle id of the application. Can be an iOS bundle id, android package name, ... Used to identify the application to the client
@@ -41,8 +43,7 @@ class NiddlerBuilder {
     if (id == null) {
       throw ArgumentError('bundleId must be set');
     }
-    return createNiddler(
-        maxCacheSize, port, password, id, serverInfo, sanitizer,
+    return createNiddler(maxCacheSize, port, id, serverInfo, sanitizer,
         includeStackTrace: includeStackTrace);
   }
 }

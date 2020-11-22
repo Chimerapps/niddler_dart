@@ -1,3 +1,8 @@
+## 0.11.0-nullsafety.0
+
+- Support null-safety
+- Deprecate passwords
+
 ## 0.10.4
 
 - Move to using `dart_service_announcement` for announcement 

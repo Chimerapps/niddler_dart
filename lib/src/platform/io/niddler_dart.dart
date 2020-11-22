@@ -9,8 +9,8 @@ import 'dart:isolate';
 
 import 'package:niddler_dart/src/niddler_generic.dart';
 import 'package:niddler_dart/src/niddler_message.dart';
+import 'package:niddler_dart/src/util/uuid.dart';
 import 'package:stack_trace/stack_trace.dart';
-import 'package:uuid/uuid.dart';
 
 class NiddlerHttpOverrides extends HttpOverrides {
   final Niddler _niddler;
@@ -153,7 +153,7 @@ class _NiddlerHttpClient implements HttpClient {
     }
 
     return Future.value(_NiddlerHttpClientRequest(
-        url, method, _delegate, _niddler, Uuid().v4(), _sanitizer,
+        url, method, _delegate, _niddler, SimpleUUID.uuid(), _sanitizer,
         includeStackTraces: includeStackTraces));
   }
 
@@ -304,7 +304,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       url: uri.toString(),
       method: method,
       stackTraces: _stackTraces,
-      messageId: Uuid().v4(),
+      messageId: SimpleUUID.uuid(),
       requestId: requestId,
       timeStamp: _requestTime,
       headers: <String, List<String>>{},
@@ -334,7 +334,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
           url: overriddenRequest.url,
           method: overriddenRequest.method,
           stackTraces: _stackTraces,
-          messageId: Uuid().v4(),
+          messageId: SimpleUUID.uuid(),
           requestId: requestId,
           timeStamp: _requestTime,
           headers: {
@@ -410,7 +410,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       readTime: -1,
       writeTime: -1,
       waitTime: -1,
-      messageId: Uuid().v4(),
+      messageId: SimpleUUID.uuid(),
       requestId: requestId,
       timeStamp: DateTime.now().millisecondsSinceEpoch,
       headers: responseHeaders,

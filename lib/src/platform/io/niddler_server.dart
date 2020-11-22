@@ -4,16 +4,12 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
-import 'package:crypto/crypto.dart';
 import 'package:dart_service_announcement/dart_service_announcement.dart';
 import 'package:niddler_dart/niddler_dart.dart';
 import 'package:niddler_dart/src/platform/debugger/niddler_debugger.dart';
+import 'package:niddler_dart/src/util/uuid.dart';
 import 'package:synchronized/synchronized.dart';
-import 'package:uuid/uuid.dart';
-
-const _chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
 /// Listener for new niddler client connections
 // ignore: one_member_abstracts
@@ -26,12 +22,10 @@ abstract class NiddlerServerConnectionListener {
 class NiddlerServer extends ToolingServer {
   HttpServer? _server;
   final int _port;
-  final String? _bundleId;
-  final String? _password;
   final _lock = Lock();
   final List<NiddlerConnection> _connections = [];
   final NiddlerDebuggerImpl _debugger = NiddlerDebuggerImpl();
-  final String tag = Uuid().v4().substring(0, 6);
+  final String tag = SimpleUUID.uuid().substring(0, 6);
 
   @override
   int get protocolVersion => 4; //Debugging support
@@ -43,7 +37,7 @@ class NiddlerServer extends ToolingServer {
 
   late final NiddlerServerConnectionListener connectionListener;
 
-  NiddlerServer(this._port, [this._bundleId, this._password]);
+  NiddlerServer(this._port);
 
   /// Starts the server
   Future<void> start({required bool waitForDebugger}) async {
@@ -82,11 +76,7 @@ class NiddlerServer extends ToolingServer {
           cancelOnError: true);
     });
 
-    if (_password != null && _bundleId != null) {
-      connection.sendAuthRequest(_password!, _bundleId!);
-    } else {
-      connection.onAuthSuccess();
-    }
+    connection.onAuthSuccess();
   }
 
   void _onSocketClosed(NiddlerConnection socket) {
@@ -99,7 +89,6 @@ class NiddlerServer extends ToolingServer {
 
 /// Represents a client connection (over websockets). Connections will not send data until they have authenticated (when required)
 class NiddlerConnection {
-  static const _MESSAGE_AUTH = 'authReply';
   static const _MESSAGE_START_DEBUG = 'startDebug';
   static const _MESSAGE_END_DEBUG = 'endDebug';
   static const _MESSAGE_DEBUG_CONTROL = 'controlDebug';
@@ -108,23 +97,9 @@ class NiddlerConnection {
   final NiddlerServer _server;
   final NiddlerServerConnectionListener _connectionListener;
   bool _authenticated = false;
-  String? _currentAuthRequestData;
-  String? _currentPassword;
 
   NiddlerConnection(this._socket, this._connectionListener, this._server) {
     _socket.add('{"type":"protocol","protocolVersion":4}');
-  }
-
-  void sendAuthRequest(String password, String bundleId) {
-    final authRequest = _generateAuthRequest();
-    _currentAuthRequestData = authRequest;
-    _currentPassword = password;
-    final messageData = {
-      'type': 'authRequest',
-      'hash': authRequest,
-      'package': bundleId
-    };
-    _socket.add(json.encode(messageData));
   }
 
   void send(String message) {
@@ -145,9 +120,6 @@ class NiddlerConnection {
     final parsedJson = jsonDecode(data);
     final type = parsedJson['type'];
     switch (type) {
-      case _MESSAGE_AUTH:
-        _handleAuthReply(parsedJson['hashKey']);
-        break;
       case _MESSAGE_START_DEBUG:
         if (_authenticated) {
           _server._debugger.onDebuggerAttached(this);
@@ -160,33 +132,6 @@ class NiddlerConnection {
         _server._debugger.onControlMessage(parsedJson, this);
         break;
     }
-  }
-
-  void _handleAuthReply(String? hashKey) {
-    if (_currentPassword == null ||
-        hashKey == null ||
-        _currentAuthRequestData == null) {
-      _socket.close(1000);
-      return;
-    }
-    final shaDigest = sha512
-        .convert(utf8.encode(_currentAuthRequestData! + _currentPassword!))
-        .bytes;
-    final base64Data = base64Encode(shaDigest);
-    if (hashKey == base64Data) {
-      onAuthSuccess();
-    } else {
-      _socket.close(1000, 'Bad auth');
-    }
-  }
-
-  String _generateAuthRequest() {
-    final rnd = Random(DateTime.now().millisecondsSinceEpoch);
-    final buffer = StringBuffer();
-    for (var i = 0; i < 512; i++) {
-      buffer.writeCharCode(_chars.codeUnitAt(rnd.nextInt(_chars.length)));
-    }
-    return buffer.toString();
   }
 
   void close() {
