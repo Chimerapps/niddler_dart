@@ -8,9 +8,9 @@ import 'package:niddler_dart/src/niddler_message.dart';
 Niddler createNiddler(
   int maxCacheSize,
   int port,
-  String password,
+  String? password,
   String bundleId,
-  NiddlerServerInfo serverInfo,
+  NiddlerServerInfo? serverInfo,
   StackTraceSanitizer sanitizer, {
   required bool includeStackTrace,
 }) =>
@@ -62,12 +62,8 @@ class NiddlerDebuggerNoop implements NiddlerDebugger {
   Future<bool> waitForConnection() => Future.value(false);
 
   @override
-  Future<DebugRequest?> overrideRequest(
-          NiddlerRequest request, List<List<int>>? nonSerializedBody) =>
-      Future.value(null);
+  Future<DebugRequest?> overrideRequest(NiddlerRequest request, List<List<int>>? nonSerializedBody) => Future.value(null);
 
   @override
-  Future<DebugResponse?> overrideResponse(NiddlerRequest request,
-          NiddlerResponse response, List<List<int>>? nonSerializedBody) =>
-      Future.value(null);
+  Future<DebugResponse?> overrideResponse(NiddlerRequest request, NiddlerResponse response, List<List<int>>? nonSerializedBody) => Future.value(null);
 }
