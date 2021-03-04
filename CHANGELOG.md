@@ -1,3 +1,7 @@
+## 1.0.0
+
+- Support null-safety
+
 ## 0.11.0-nullsafety.0
 
 - Support null-safety
@@ -5,7 +9,7 @@
 
 ## 0.10.4
 
-- Move to using `dart_service_announcement` for announcement 
+- Move to using `dart_service_announcement` for announcement
 
 ## 0.10.3
 
@@ -80,7 +84,7 @@
 - Added support for flutter web by providing a no-op niddler implementation
 - Small bugfix that could cause the announcement manager to crash
 - Breaking change:
-`NiddlerInjector.install(niddler);` has been replaced with `niddler.install();`
+  `NiddlerInjector.install(niddler);` has been replaced with `niddler.install();`
 
 ## 0.4.0
 
@@ -117,7 +121,7 @@
 
 ## 0.1.1
 
-- Removed dependency on http  
+- Removed dependency on http
 
 ## 0.1.0
 
