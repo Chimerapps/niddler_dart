@@ -71,6 +71,8 @@ abstract class NiddlerDebugger {
     NiddlerResponse response,
     List<List<int>> nonSerializedBody,
   );
+
+  Future<DebugResponse?> provideResponse(NiddlerRequest request);
 }
 
 class DebugRequest {

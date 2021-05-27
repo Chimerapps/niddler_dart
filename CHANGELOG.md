@@ -1,3 +1,7 @@
+## 1.1.0
+
+- Upgraded debugger support
+
 ## 1.0.0
 
 - Support null-safety

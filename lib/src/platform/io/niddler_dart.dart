@@ -311,23 +311,34 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     );
     headers.forEach((key, values) => _originalRequest.headers[key] = values);
 
-    HttpClientRequest? request;
     var executingRequest = _originalRequest;
+    Future<HttpClientRequest> Function()? requestCreator;
     if (_niddler.debugger.isActive) {
       final overriddenRequest = await _niddler.debugger
           .overrideRequest(_originalRequest, requestBodyBytes);
       if (overriddenRequest != null) {
         final newUri = Uri.parse(overriddenRequest.url);
-        request =
-            await _delegateClient.openUrl(overriddenRequest.method, newUri)
-              ..bufferOutput = bufferOutput;
+        requestCreator = () async {
+          final request =
+              await _delegateClient.openUrl(overriddenRequest.method, newUri)
+                ..bufferOutput = bufferOutput;
 
-        overriddenRequest.headers
-            .forEach((key, values) => request!.headers.add(key, values));
-        request
-          ..persistentConnection = persistentConnection
-          ..followRedirects = followRedirects
-          ..maxRedirects = maxRedirects;
+          overriddenRequest.headers
+              .forEach((key, values) => request.headers.add(key, values));
+          request
+            ..persistentConnection = persistentConnection
+            ..followRedirects = followRedirects
+            ..maxRedirects = maxRedirects;
+
+          if (overriddenRequest.encodedBody != null) {
+            final decoded = const Base64Codec.urlSafe()
+                .decode(_ensureBase64Padded(overriddenRequest.encodedBody!));
+            request
+              ..contentLength = decoded.length
+              ..add(decoded);
+          }
+          return request;
+        };
         //Cookies are added automatically by request object based on headers
 
         executingRequest = NiddlerRequest(
@@ -342,42 +353,42 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
           },
         );
         executingRequest.headers.addAll(overriddenRequest.headers);
-
-        if (overriddenRequest.encodedBody != null) {
-          final decoded = const Base64Codec.urlSafe()
-              .decode(_ensureBase64Padded(overriddenRequest.encodedBody!));
-          request
-            ..contentLength = decoded.length
-            ..add(decoded);
-        }
       }
     }
-    //Build normal request
-    if (request == null) {
-      request = await _delegateClient.openUrl(method, uri)
+    final stringData = await _encodeBody(executingRequest, requestBodyBytes);
+    _niddler.logRequestJson(stringData);
+
+    if (_niddler.debugger.isActive) {
+      final overriddenResponse =
+          await _niddler.debugger.provideResponse(executingRequest);
+      if (overriddenResponse != null) {
+        return _handleResponseOverride(executingRequest, overriddenResponse);
+      }
+    }
+
+    //Build normal request if required
+    requestCreator ??= () async {
+      final request = await _delegateClient.openUrl(method, uri)
         ..bufferOutput = bufferOutput
         ..persistentConnection = persistentConnection
         ..followRedirects = followRedirects
         ..maxRedirects = maxRedirects
         ..cookies.addAll(cookies);
 
-      // ignore: avoid_as
       (headers as _SimpleHeaders).applyHeaders(request.headers);
 
       if (requestBodyBytes != null) {
-        requestBodyBytes!.forEach((list) => request!.add(list));
+        requestBodyBytes!.forEach(request.add);
       }
-    }
-
-    final stringData = await _encodeBody(executingRequest, requestBodyBytes);
-    _niddler.logRequestJson(stringData);
+      return request;
+    };
 
     final connectionHeader = executingRequest.headers['connection'];
     if (connectionHeader != null &&
         connectionHeader
                 .find((element) => element.toLowerCase() == 'upgrade') !=
             null) {
-      return request.close().then((value) {
+      return (await requestCreator()).close().then((value) {
         if (!_completer.isCompleted) {
           _completer.complete(value);
         }
@@ -386,7 +397,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     }
 
     // ignore: unawaited_futures
-    request
+    (await requestCreator())
         .close()
         .then((response) => _handleResponse(_originalRequest, response))
         .then((value) {
@@ -483,6 +494,51 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     );
   }
 
+  Future<HttpClientResponse> _handleResponseOverride(
+      NiddlerRequest request, DebugResponse response) async {
+    final uri = Uri.parse(request.url);
+    final newHeaders = _SimpleHeaders()
+      ..host = uri.host
+      ..port = uri.port;
+    response.headers.forEach(
+        (key, values) => values.forEach((value) => newHeaders.add(key, value)));
+    final cookies = newHeaders['set-cookie']
+            ?.map((value) => Cookie.fromSetCookieValue(value))
+            .toList() ??
+        [];
+
+    final changedNiddlerResponse = NiddlerResponse(
+      statusCode: response.code,
+      statusLine: response.message,
+      httpVersion: null,
+      writeTime: -1,
+      readTime: -1,
+      waitTime: -1,
+      timeStamp: DateTime.now().millisecondsSinceEpoch,
+      headers: response.headers,
+      messageId: SimpleUUID.uuid(),
+      requestId: requestId,
+    );
+    List<List<int>>? newBody;
+    if (response.encodedBody != null) {
+      newBody = [
+        const Base64Codec.urlSafe()
+            .decode(_ensureBase64Padded(response.encodedBody!))
+      ];
+    }
+    changedNiddlerResponse.headers['x-niddler-debug'] = ['true'];
+
+    final stringMessage = await _encodeBody(changedNiddlerResponse, newBody);
+    _niddler.logResponseJson(stringMessage);
+
+    return _NiddlerHttpClientResponseWrapper(null, newBody,
+        overrideCookies: cookies,
+        overrideHeaders: headers,
+        overrideReasonPhrase: response.message,
+        overrideStatusCode: response.code,
+        overrideContentLength: newBody?.length ?? 0);
+  }
+
   Future<HttpClientResponse> _handleDefaultResponse(
     NiddlerResponse initialNiddlerResponse,
     HttpClientResponse originalResponse,
@@ -508,7 +564,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   }
 
   @override
-  void writeCharCode(int charCode) => add([]..add(charCode));
+  void writeCharCode(int charCode) => add([charCode]);
 
   @override
   void writeln([Object? obj = '']) => write('$obj\n');
@@ -591,11 +647,12 @@ Iterable<String> _expandWithGaps(Iterable<Trace> source) {
 
 class _NiddlerHttpClientResponseWrapper
     extends _NiddlerHttpClientResponseStreamBase {
-  final HttpClientResponse _originalResponse;
+  final HttpClientResponse? _originalResponse;
   final List<Cookie>? overrideCookies;
   final HttpHeaders? overrideHeaders;
   final String? overrideReasonPhrase;
   final int? overrideStatusCode;
+  final int? overrideContentLength;
 
   _NiddlerHttpClientResponseWrapper(
     this._originalResponse,
@@ -604,34 +661,42 @@ class _NiddlerHttpClientResponseWrapper
     this.overrideHeaders,
     this.overrideReasonPhrase,
     this.overrideStatusCode,
+    this.overrideContentLength,
   }) : super(body);
 
   @override
-  X509Certificate? get certificate => _originalResponse.certificate;
+  X509Certificate? get certificate => _originalResponse?.certificate;
 
   @override
   HttpClientResponseCompressionState get compressionState =>
-      _originalResponse.compressionState;
+      _originalResponse?.compressionState ??
+      HttpClientResponseCompressionState.notCompressed;
 
   @override
-  HttpConnectionInfo? get connectionInfo => _originalResponse.connectionInfo;
+  HttpConnectionInfo? get connectionInfo => _originalResponse?.connectionInfo;
 
   @override
-  int get contentLength => _originalResponse
-      .contentLength; //Due to decompressed flag, this can be -1
+  int get contentLength =>
+      overrideContentLength ??
+      _originalResponse?.contentLength ??
+      0; //Due to decompressed flag, this can be -1
 
   @override
-  List<Cookie> get cookies => overrideCookies ?? _originalResponse.cookies;
+  List<Cookie> get cookies =>
+      overrideCookies ?? _originalResponse?.cookies ?? [];
 
   @override
-  Future<Socket> detachSocket() => _originalResponse.detachSocket();
+  Future<Socket> detachSocket() =>
+      _originalResponse?.detachSocket() ??
+      Future.error('Failed to detach socket');
 
   @override
-  HttpHeaders get headers => overrideHeaders ?? _originalResponse.headers;
+  HttpHeaders get headers =>
+      overrideHeaders ?? _originalResponse?.headers ?? _SimpleHeaders();
 
   @override
   bool get isRedirect => (overrideStatusCode == null)
-      ? _originalResponse.isRedirect
+      ? _originalResponse?.isRedirect == true
       : (overrideStatusCode == HttpStatus.movedPermanently ||
           overrideStatusCode == HttpStatus.found ||
           overrideStatusCode == HttpStatus.movedTemporarily ||
@@ -639,23 +704,26 @@ class _NiddlerHttpClientResponseWrapper
           overrideStatusCode == HttpStatus.temporaryRedirect);
 
   @override
-  bool get persistentConnection => _originalResponse.persistentConnection;
+  bool get persistentConnection =>
+      _originalResponse?.persistentConnection ?? false;
 
   @override
   String get reasonPhrase =>
-      overrideReasonPhrase ?? _originalResponse.reasonPhrase;
+      overrideReasonPhrase ?? _originalResponse?.reasonPhrase ?? 'No reason';
 
   @override
   Future<HttpClientResponse> redirect(
       [String? method, Uri? url, bool? followLoops]) {
-    return _originalResponse.redirect(method, url, followLoops);
+    return _originalResponse?.redirect(method, url, followLoops) ??
+        Future.error('Could not redirect');
   }
 
   @override
-  List<RedirectInfo> get redirects => _originalResponse.redirects;
+  List<RedirectInfo> get redirects => _originalResponse?.redirects ?? [];
 
   @override
-  int get statusCode => overrideStatusCode ?? _originalResponse.statusCode;
+  int get statusCode =>
+      overrideStatusCode ?? _originalResponse?.statusCode ?? -1;
 }
 
 abstract class _NiddlerHttpClientResponseStreamBase
@@ -918,8 +986,9 @@ class _SimpleHeaders implements HttpHeaders {
 
   @override
   void set(String name, Object value, {bool preserveHeaderCase = false}) {
-    _headers[preserveHeaderCase ? name : name.toLowerCase()] = []
-      ..add(value.toString());
+    _headers[preserveHeaderCase ? name : name.toLowerCase()] = [
+      value.toString()
+    ];
   }
 
   @override

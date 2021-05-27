@@ -66,13 +66,13 @@ Future<void> executePost1() async {
   };
   final response = await http.post(Uri.parse('http://httpbin.org/post'),
       body: json.encode(value), headers: {'content-type': 'application/json'});
-  print('Post body: ${response.body}');
+  print('Post body: ${response.bodyBytes.length}');
 }
 
 Future<void> executeGet() async {
   final response2 = await http.get(Uri.parse('http://httpbin.org/get'),
       headers: {'content-type': 'application/json'});
-  print('Get body (blacklisted): ${response2.body}');
+  print('Get body (blacklisted): ${response2.bodyBytes.length}');
 }
 
 Future<void> executePost2() async {

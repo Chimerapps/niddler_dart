@@ -69,4 +69,8 @@ class NiddlerDebuggerNoop implements NiddlerDebugger {
   Future<DebugResponse?> overrideResponse(NiddlerRequest request,
           NiddlerResponse response, List<List<int>>? nonSerializedBody) =>
       Future.value(null);
+
+  @override
+  Future<DebugResponse?> provideResponse(NiddlerRequest request) =>
+      Future.value(null);
 }
