@@ -1,3 +1,7 @@
+## 1.1.1
+
+- Bugfix for debugger not accepting some values
+
 ## 1.1.0
 
 - Upgraded debugger support
