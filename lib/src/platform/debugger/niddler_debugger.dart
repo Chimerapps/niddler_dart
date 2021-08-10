@@ -33,8 +33,7 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
   }
 
   @override
-  Future<DebugRequest?> overrideRequest(
-      NiddlerRequest request, List<List<int>>? nonSerializedBody) {
+  Future<DebugRequest?> overrideRequest(NiddlerRequest request, List<List<int>>? nonSerializedBody) {
     if (!isActive || _currentConnection == null) return Future.value(null);
 
     return _configuration.overrideRequest(request, nonSerializedBody);
@@ -48,9 +47,7 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
   ) {
     if (!isActive || _currentConnection == null) return Future.value(null);
 
-    return _configuration.overrideResponse(
-            request, response, nonSerializedBody) ??
-        Future.value(null);
+    return _configuration.overrideResponse(request, response, nonSerializedBody) ?? Future.value(null);
   }
 
   @override
@@ -84,8 +81,7 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
     if (_currentConnection != niddlerConnection) {
       return;
     }
-    _onDebuggerConfigurationMessage(
-        parsedJson[_DEBUG_TYPE_KEY], parsedJson[_DEBUG_PAYLOAD], parsedJson);
+    _onDebuggerConfigurationMessage(parsedJson[_DEBUG_TYPE_KEY], parsedJson[_DEBUG_PAYLOAD], parsedJson);
   }
 
   void _onDebuggerConfigurationMessage(String messageType, body, envelope) {
@@ -101,53 +97,42 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
         _configuration.isActive = false;
         break;
       case _MESSAGE_ADD_REQUEST_OVERRIDE:
-        _configuration
-            .addRequestOverrideAction(_DebugRequestOverrideAction(body));
+        _configuration.addRequestOverrideAction(_DebugRequestOverrideAction(body));
         break;
       case _MESSAGE_ADD_RESPONSE:
-        _configuration
-            .addResponseOverrideAction(_DebugResponseOverrideAction(body));
+        _configuration.addResponseOverrideAction(_DebugResponseOverrideAction(body));
         break;
       case _MESSAGE_ADD_REQUEST:
-        print('Adding request action');
         _configuration.addRequestAction(_DebugRequestAction(body));
         break;
       case _MESSAGE_DEBUG_REQUEST:
-        _configuration.onDebugRequest(
-            envelope[_KEY_MESSAGE_ID], _parseRequestOverride(body));
+        _configuration.onDebugRequest(envelope[_KEY_MESSAGE_ID], _parseRequestOverride(body));
         break;
       case _MESSAGE_DEBUG_REPLY:
-        _configuration.onDebugResponse(
-            envelope[_KEY_MESSAGE_ID], _parseResponseOverride(body));
+        _configuration.onDebugResponse(envelope[_KEY_MESSAGE_ID], _parseResponseOverride(body));
         break;
     }
   }
 
-  Future<DebugRequest?> sendHandleRequestOverride(
-      String actionId, NiddlerRequest request) {
+  Future<DebugRequest?> sendHandleRequestOverride(String actionId, NiddlerRequest request) {
     final connection = _currentConnection;
     if (connection == null) return Future.value(null);
 
-    return _configuration.sendHandleRequestOverride(
-        actionId, request, connection);
+    return _configuration.sendHandleRequestOverride(actionId, request, connection);
   }
 
-  Future<DebugResponse?> sendHandleResponseOverride(
-      String actionId, NiddlerRequest request, NiddlerResponse response) {
+  Future<DebugResponse?> sendHandleResponseOverride(String actionId, NiddlerRequest request, NiddlerResponse response) {
     final connection = _currentConnection;
     if (connection == null) return Future.value(null);
 
-    return _configuration.sendHandleResponseOverride(
-        actionId, request, response, connection);
+    return _configuration.sendHandleResponseOverride(actionId, request, response, connection);
   }
 
-  Future<DebugResponse?> sendHandleRequest(
-      String actionId, NiddlerRequest request) {
+  Future<DebugResponse?> sendHandleRequest(String actionId, NiddlerRequest request) {
     final connection = _currentConnection;
     if (connection == null) return Future.value(null);
 
-    return _configuration.sendHandleResponseOverride(
-        actionId, request, null, connection);
+    return _configuration.sendHandleResponseOverride(actionId, request, null, connection);
   }
 
   DebugRequest? _parseRequestOverride(body) {
@@ -184,10 +169,16 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
   }
 }
 
+class _Optional<T> {
+  final T? value;
+
+  _Optional(this.value);
+}
+
 class _NiddlerDebuggerConfiguration {
   final NiddlerDebuggerImpl _debugger;
-  final _waitingRequests = <String, Completer<DebugRequest>>{};
-  final _waitingResponses = <String, Completer<DebugResponse>>{};
+  final _waitingRequests = <String, Completer<_Optional<DebugRequest>>>{};
+  final _waitingResponses = <String, Completer<_Optional<DebugResponse>>>{};
   final _requestOverrides = <_RequestOverrideAction>[];
   final _responseOverrides = <_ResponseOverrideAction>[];
   final _requestActions = <_RequestAction>[];
@@ -206,9 +197,8 @@ class _NiddlerDebuggerConfiguration {
     _requestActions.clear();
   }
 
-  Future<DebugRequest> sendHandleRequestOverride(
-      String actionId, NiddlerRequest request, NiddlerConnection connection) {
-    final completer = Completer<DebugRequest>();
+  Future<DebugRequest> sendHandleRequestOverride(String actionId, NiddlerRequest request, NiddlerConnection connection) {
+    final completer = Completer<_Optional<DebugRequest>>();
     _waitingRequests[request.messageId] = completer;
 
     //TODO isolate json encoding
@@ -221,16 +211,16 @@ class _NiddlerDebuggerConfiguration {
 
     connection.send(jsonMessage);
 
-    return completer.future;
+    return completer.future.then((value) => Future.value(value.value));
   }
 
-  Future<DebugResponse> sendHandleResponseOverride(
+  Future<DebugResponse?> sendHandleResponseOverride(
     String actionId,
     NiddlerRequest request,
     NiddlerResponse? response,
     NiddlerConnection connection,
   ) {
-    final completer = Completer<DebugResponse>();
+    final completer = Completer<_Optional<DebugResponse>>();
     _waitingResponses[request.messageId] = completer;
 
     //TODO isolate json encoding
@@ -248,25 +238,22 @@ class _NiddlerDebuggerConfiguration {
 
     connection.send(jsonMessage);
 
-    return completer.future;
+    return completer.future.then((value) => Future.value(value.value));
   }
 
-  void addRequestOverrideAction(
-      _DebugRequestOverrideAction debugRequestOverrideAction) {
+  void addRequestOverrideAction(_DebugRequestOverrideAction debugRequestOverrideAction) {
     _requestOverrides.add(debugRequestOverrideAction);
   }
 
   void onDebugRequest(String messageId, DebugRequest? debugRequest) {
-    _waitingRequests.remove(messageId)?.complete(debugRequest);
+    _waitingRequests.remove(messageId)?.complete(_Optional(debugRequest));
   }
 
-  Future<DebugRequest?> overrideRequest(
-      NiddlerRequest request, List<List<int>>? nonSerializedBody) {
+  Future<DebugRequest?> overrideRequest(NiddlerRequest request, List<List<int>>? nonSerializedBody) {
     Future<DebugRequest?>? result;
     _requestOverrides.forEach((handler) {
       if (result != null) return;
-      final future =
-          handler.handleRequest(request, nonSerializedBody, _debugger);
+      final future = handler.handleRequest(request, nonSerializedBody, _debugger);
       if (future != null) {
         result = future;
       }
@@ -274,13 +261,11 @@ class _NiddlerDebuggerConfiguration {
     return result ?? Future.value(null);
   }
 
-  Future<DebugResponse?>? overrideResponse(NiddlerRequest request,
-      NiddlerResponse response, List<List<int>> nonSerializedBody) {
+  Future<DebugResponse?>? overrideResponse(NiddlerRequest request, NiddlerResponse response, List<List<int>> nonSerializedBody) {
     Future<DebugResponse?>? result;
     _responseOverrides.forEach((handler) {
       if (result != null) return;
-      final future = handler.handleRequest(
-          request, response, nonSerializedBody, _debugger);
+      final future = handler.handleRequest(request, response, nonSerializedBody, _debugger);
       if (future != null) {
         result = future;
       }
@@ -301,11 +286,10 @@ class _NiddlerDebuggerConfiguration {
   }
 
   void onDebugResponse(String messageId, DebugResponse? debugResponse) {
-    _waitingResponses.remove(messageId)?.complete(debugResponse);
+    _waitingResponses.remove(messageId)?.complete(_Optional(debugResponse));
   }
 
-  void addResponseOverrideAction(
-      _ResponseOverrideAction responseOverrideAction) {
+  void addResponseOverrideAction(_ResponseOverrideAction responseOverrideAction) {
     _responseOverrides.add(responseOverrideAction);
   }
 
@@ -388,8 +372,7 @@ class _DebugRequestAction extends _RequestAction {
         super(json);
 
   @override
-  Future<DebugResponse?>? handleRequest(
-      NiddlerRequest request, NiddlerDebuggerImpl debugger) {
+  Future<DebugResponse?>? handleRequest(NiddlerRequest request, NiddlerDebuggerImpl debugger) {
     if (!active) return Future.value(null);
 
     if (_regex != null && !_regex!.hasMatch(request.url)) {
@@ -443,8 +426,7 @@ abstract class _DebugAction {
 }
 
 //TODO performance?
-void _serializeBodyIfRequired(
-    NiddlerMessageBase message, List<List<int>>? bodyBytes) {
+void _serializeBodyIfRequired(NiddlerMessageBase message, List<List<int>>? bodyBytes) {
   if (message.body == null && bodyBytes != null && bodyBytes.isNotEmpty) {
     final mappedBodyBytes = <int>[];
     bodyBytes.forEach(mappedBodyBytes.addAll);
