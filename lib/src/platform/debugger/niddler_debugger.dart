@@ -369,12 +369,15 @@ class _DebugResponseOverrideAction extends _ResponseOverrideAction {
     if (!active) return Future.value(null);
 
     if (_regex != null && !_regex!.hasMatch(request.url)) {
+      // ignore: avoid_returning_null_for_future
       return null;
     }
     if (_method != null && _method != request.method?.toLowerCase()) {
+      // ignore: avoid_returning_null_for_future
       return null;
     }
     if (_responseCode != null && _responseCode != response.statusCode) {
+      // ignore: avoid_returning_null_for_future
       return null;
     }
 

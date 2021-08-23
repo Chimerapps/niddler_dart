@@ -1,3 +1,8 @@
+## 1.1.3
+
+- Fixed typo
+- Suppressed warnings
+
 ## 1.1.2
 
 - Bugfix where some http exceptions would not be correctly propagated and cause the uncaught exception handler to fire
