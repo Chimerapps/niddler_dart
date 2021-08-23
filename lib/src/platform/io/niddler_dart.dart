@@ -396,16 +396,14 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       });
     }
 
-    // ignore: unawaited_futures
-    (await requestCreator())
-        .close()
-        .then((response) => _handleResponse(_originalRequest, response))
-        .then((value) {
-      if (!_completer.isCompleted) {
-        _completer.complete(value);
-      }
-    });
-
+    try {
+      final createdRequest = await requestCreator();
+      final response = await createdRequest.close();
+      final handledResponse = await _handleResponse(_originalRequest, response);
+      _completer.complete(handledResponse);
+    } catch (e, trace) {
+      _completer.completeError(e, trace);
+    }
     return _completer.future;
   }
 
@@ -619,11 +617,11 @@ Future<String> _encodeBody(
       result.complete(resultData);
     }
   });
-  await result.future;
+  final encoded = await result.future;
   resultPort.close();
   errorPort.close();
   isolate.kill();
-  return result.future;
+  return Future.value(encoded);
 }
 
 Trace _filterFrames(Trace source, StackTraceSanitizer sanitizer) {

@@ -1,3 +1,7 @@
+## 1.1.2
+
+- Bugfix where some http exceptions would not be correctly propagated and cause the uncaught exception handler to fire
+
 ## 1.1.1
 
 - Bugfix for debugger not accepting some values

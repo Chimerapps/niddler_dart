@@ -211,7 +211,7 @@ class _NiddlerDebuggerConfiguration {
     _requestActions.clear();
   }
 
-  Future<DebugRequest> sendHandleRequestOverride(
+  Future<DebugRequest?> sendHandleRequestOverride(
       String actionId, NiddlerRequest request, NiddlerConnection connection) {
     final completer = Completer<_Optional<DebugRequest>>();
     _waitingRequests[request.messageId] = completer;
@@ -369,13 +369,13 @@ class _DebugResponseOverrideAction extends _ResponseOverrideAction {
     if (!active) return Future.value(null);
 
     if (_regex != null && !_regex!.hasMatch(request.url)) {
-      return Future.value(null);
+      return null;
     }
     if (_method != null && _method != request.method?.toLowerCase()) {
-      return Future.value(null);
+      return null;
     }
     if (_responseCode != null && _responseCode != response.statusCode) {
-      return Future.value(null);
+      return null;
     }
 
     _serializeBodyIfRequired(response, nonSerializedBody);
