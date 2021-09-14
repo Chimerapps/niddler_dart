@@ -202,8 +202,10 @@ class _NiddlerDebuggerConfiguration {
   _NiddlerDebuggerConfiguration(this._debugger);
 
   void onConnectionLost() {
-    _waitingRequests.forEach((_, completer) => completer.complete(null));
-    _waitingResponses.forEach((_, completer) => completer.complete(null));
+    _waitingRequests
+        .forEach((_, completer) => completer.complete(_Optional(null)));
+    _waitingResponses
+        .forEach((_, completer) => completer.complete(_Optional(null)));
     _waitingRequests.clear();
     _waitingResponses.clear();
     _requestOverrides.clear();
@@ -267,42 +269,36 @@ class _NiddlerDebuggerConfiguration {
 
   Future<DebugRequest?> overrideRequest(
       NiddlerRequest request, List<List<int>>? nonSerializedBody) {
-    Future<DebugRequest?>? result;
-    _requestOverrides.forEach((handler) {
-      if (result != null) return;
+    for (final handler in _requestOverrides) {
       final future =
           handler.handleRequest(request, nonSerializedBody, _debugger);
       if (future != null) {
-        result = future;
+        return future;
       }
-    });
-    return result ?? Future.value(null);
+    }
+    return Future.value(null);
   }
 
   Future<DebugResponse?>? overrideResponse(NiddlerRequest request,
       NiddlerResponse response, List<List<int>> nonSerializedBody) {
-    Future<DebugResponse?>? result;
-    _responseOverrides.forEach((handler) {
-      if (result != null) return;
+    for (final handler in _responseOverrides) {
       final future = handler.handleRequest(
           request, response, nonSerializedBody, _debugger);
       if (future != null) {
-        result = future;
+        return future;
       }
-    });
-    return result ?? Future.value(null);
+    }
+    return Future.value(null);
   }
 
   Future<DebugResponse?>? provideResponse(NiddlerRequest request) {
-    Future<DebugResponse?>? result;
-    _requestActions.forEach((handler) {
-      if (result != null) return;
+    for (final handler in _requestActions) {
       final future = handler.handleRequest(request, _debugger);
       if (future != null) {
-        result = future;
+        return future;
       }
-    });
-    return result ?? Future.value(null);
+    }
+    return Future.value(null);
   }
 
   void onDebugResponse(String messageId, DebugResponse? debugResponse) {
@@ -382,7 +378,7 @@ class _DebugResponseOverrideAction extends _ResponseOverrideAction {
     }
 
     _serializeBodyIfRequired(response, nonSerializedBody);
-    return debugger.sendHandleRequest(id, request);
+    return debugger.sendHandleResponseOverride(id, request, response);
   }
 }
 

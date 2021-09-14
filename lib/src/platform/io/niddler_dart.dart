@@ -84,14 +84,14 @@ class _NiddlerHttpClient implements HttpClient {
   @override
   // ignore: avoid_setters_without_getters
   set authenticate(
-          Future<bool> Function(Uri url, String scheme, String realm)? f) =>
+          Future<bool> Function(Uri url, String scheme, String? realm)? f) =>
       _delegate.authenticate = f;
 
   @override
   // ignore: avoid_setters_without_getters
   set authenticateProxy(
           Future<bool> Function(
-                  String host, int port, String scheme, String realm)?
+                  String host, int port, String scheme, String? realm)?
               f) =>
       _delegate.authenticateProxy = f;
 
@@ -935,7 +935,9 @@ class _SimpleHeaders implements HttpHeaders {
 
     _headers.forEach(
         (key, values) => values.forEach((value) => to.add(key, value)));
-    _noFolding.forEach((noFold) => to.noFolding(noFold));
+    for (var noFold in _noFolding) {
+      to.noFolding(noFold);
+    }
   }
 
   @override
@@ -948,8 +950,9 @@ class _SimpleHeaders implements HttpHeaders {
     final target = _headers.putIfAbsent(
         preserveHeaderCase ? name : name.toLowerCase(), () => <String>[]);
     if (value is List) {
-      value.forEach(
-          (item) => add(name, item, preserveHeaderCase: preserveHeaderCase));
+      for (var item in value) {
+        add(name, item, preserveHeaderCase: preserveHeaderCase);
+      }
     } else if (value is DateTime) {
       target.add(HttpDate.format(value));
     } else {

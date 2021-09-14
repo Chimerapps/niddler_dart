@@ -1,3 +1,11 @@
+## 1.2.0
+
+- Fixed wrong function types passed to delegate
+
+## 1.1.4
+
+- Fixed bug where responses could not be overwritten by the debugger
+
 ## 1.1.3
 
 - Fixed typo
