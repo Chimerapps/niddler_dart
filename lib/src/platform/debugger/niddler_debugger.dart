@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:niddler_dart/niddler_dart.dart';
 import 'package:niddler_dart/src/platform/io/niddler_server.dart';
@@ -15,6 +16,7 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
   static const _MESSAGE_DEBUG_REPLY = 'debugReply';
   static const _MESSAGE_ADD_RESPONSE = 'addResponse';
   static const _MESSAGE_ADD_REQUEST = 'addRequest';
+  static const _MESSAGE_TOGGLE_INTERNET = 'toggleInternet';
 
   late final _NiddlerDebuggerConfiguration _configuration;
   final _connectionCompleter = Completer<bool>();
@@ -36,6 +38,9 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
   Future<DebugRequest?> overrideRequest(
       NiddlerRequest request, List<List<int>>? nonSerializedBody) {
     if (!isActive || _currentConnection == null) return Future.value(null);
+    if (_configuration.disableInternet) {
+      throw SocketException('Internet disabled by niddler');
+    }
 
     return _configuration.overrideRequest(request, nonSerializedBody);
   }
@@ -119,6 +124,11 @@ class NiddlerDebuggerImpl implements NiddlerDebugger {
         _configuration.onDebugResponse(
             envelope[_KEY_MESSAGE_ID], _parseResponseOverride(body));
         break;
+      case _MESSAGE_TOGGLE_INTERNET:
+        if (body != null) {
+          _configuration.disableInternet = body['enable'] == false;
+        }
+        break;
     }
   }
 
@@ -197,7 +207,8 @@ class _NiddlerDebuggerConfiguration {
   final _responseOverrides = <_ResponseOverrideAction>[];
   final _requestActions = <_RequestAction>[];
 
-  bool isActive = false;
+  var isActive = false;
+  var disableInternet = false;
 
   _NiddlerDebuggerConfiguration(this._debugger);
 

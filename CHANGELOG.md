@@ -1,3 +1,7 @@
+## 1.3.0
+
+- Added flag indicating that the debugger supports 'toggle internet'. When the internet is toggled off, all intercepted calls will throw a socket error
+
 ## 1.2.0
 
 - Fixed wrong function types passed to delegate
