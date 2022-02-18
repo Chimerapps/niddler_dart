@@ -183,6 +183,9 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
         'serverName': serverInfo.name,
         'serverDescription': serverInfo.description,
         'icon': serverInfo.icon,
+        'extensions': {
+          'debug.disableInternet': true,
+        }
       };
       connection.send(jsonEncode(data));
     }

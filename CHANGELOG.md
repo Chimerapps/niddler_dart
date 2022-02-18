@@ -1,7 +1,11 @@
-## 1.3.0
+## 1.4.0
 
 - Fixed delays caused by json serialization
 - Use worker manager to handle isolate pools for performance
+
+## 1.3.0
+
+- Added flag indicating that the debugger supports 'toggle internet'. When the internet is toggled off, all intercepted calls will throw a socket error
 
 ## 1.2.0
 
