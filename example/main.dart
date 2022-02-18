@@ -26,6 +26,7 @@ Future<void> main(List<String> arguments) async {
       print('Debugger connected!');
     }
     niddler.install();
+    await Future.delayed(const Duration(seconds: 10));
 
     await executeGetTypeCode();
     await executePost1();

@@ -1,3 +1,8 @@
+## 1.3.0
+
+- Fixed delays caused by json serialization
+- Use worker manager to handle isolate pools for performance
+
 ## 1.2.0
 
 - Fixed wrong function types passed to delegate

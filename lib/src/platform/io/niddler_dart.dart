@@ -5,12 +5,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:niddler_dart/src/niddler_generic.dart';
 import 'package:niddler_dart/src/niddler_message.dart';
 import 'package:niddler_dart/src/util/uuid.dart';
 import 'package:stack_trace/stack_trace.dart';
+import 'package:worker_manager/worker_manager.dart';
 
 class NiddlerHttpOverrides extends HttpOverrides {
   final Niddler _niddler;
@@ -355,10 +355,11 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
         executingRequest.headers.addAll(overriddenRequest.headers);
       }
     }
-    final stringData = await _encodeBody(executingRequest, requestBodyBytes);
-    _niddler.logRequestJson(stringData);
+    final sendFuture = _encodeBody(executingRequest, requestBodyBytes)
+        .then(_niddler.logRequestJson);
 
     if (_niddler.debugger.isActive) {
+      await sendFuture;
       final overriddenResponse =
           await _niddler.debugger.provideResponse(executingRequest);
       if (overriddenResponse != null) {
@@ -479,8 +480,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     }
     changedNiddlerResponse.headers['x-niddler-debug'] = ['true'];
 
-    final stringMessage = await _encodeBody(changedNiddlerResponse, newBody);
-    _niddler.logResponseJson(stringMessage);
+    _encodeBody(changedNiddlerResponse, newBody).then(_niddler.logResponseJson);
 
     return _NiddlerHttpClientResponseWrapper(
       originalResponse,
@@ -526,8 +526,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     }
     changedNiddlerResponse.headers['x-niddler-debug'] = ['true'];
 
-    final stringMessage = await _encodeBody(changedNiddlerResponse, newBody);
-    _niddler.logResponseJson(stringMessage);
+    _encodeBody(changedNiddlerResponse, newBody).then(_niddler.logResponseJson);
 
     return _NiddlerHttpClientResponseWrapper(null, newBody,
         overrideCookies: cookies,
@@ -571,12 +570,11 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 class _IsolateData {
   final NiddlerMessageBase message;
   final List<List<int>>? body;
-  final SendPort dataPort;
 
-  _IsolateData(this.message, this.body, this.dataPort);
+  _IsolateData(this.message, this.body);
 }
 
-void _encodeBodyJson(_IsolateData body) {
+String _encodeBodyJson(_IsolateData body) {
   final convertBodyBytes = body.body;
   if (convertBodyBytes != null && convertBodyBytes.isNotEmpty) {
     final bodyBytes = <int>[];
@@ -585,43 +583,13 @@ void _encodeBodyJson(_IsolateData body) {
       body.message.body = const Base64Codec.urlSafe().encode(bodyBytes);
     }
   }
-  body.dataPort.send(body.message.toJsonString());
+  return body.message.toJsonString();
 }
 
 Future<String> _encodeBody(
     NiddlerMessageBase message, List<List<int>>? bytes) async {
-  final resultPort = ReceivePort();
-  final errorPort = ReceivePort();
-  final isolate = await Isolate.spawn(
-    _encodeBodyJson,
-    _IsolateData(message, bytes, resultPort.sendPort),
-    errorsAreFatal: true,
-    onExit: resultPort.sendPort,
-    onError: errorPort.sendPort,
-  );
-  final result = Completer<String>();
-  errorPort.listen((errorData) {
-    assert(errorData is List<dynamic>);
-    assert(errorData.length == 2);
-    final exception = Exception(errorData[0]);
-    final stack = StackTrace.fromString(errorData[1]);
-    if (result.isCompleted) {
-      Zone.current.handleUncaughtError(exception, stack);
-    } else {
-      result.completeError(exception, stack);
-    }
-  });
-  resultPort.listen((resultData) {
-    assert(resultData == null || resultData is String);
-    if (!result.isCompleted) {
-      result.complete(resultData);
-    }
-  });
-  final encoded = await result.future;
-  resultPort.close();
-  errorPort.close();
-  isolate.kill();
-  return Future.value(encoded);
+  return Executor()
+      .execute(arg1: _IsolateData(message, bytes), fun1: _encodeBodyJson);
 }
 
 Trace _filterFrames(Trace source, StackTraceSanitizer sanitizer) {
