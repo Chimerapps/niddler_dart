@@ -6,18 +6,19 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:computer/computer.dart';
 import 'package:niddler_dart/src/niddler_generic.dart';
 import 'package:niddler_dart/src/niddler_message.dart';
 import 'package:niddler_dart/src/util/uuid.dart';
 import 'package:stack_trace/stack_trace.dart';
-import 'package:worker_manager/worker_manager.dart';
 
 class NiddlerHttpOverrides extends HttpOverrides {
   final Niddler _niddler;
   final StackTraceSanitizer _sanitizer;
   final bool includeStackTraces;
+  final Computer _computer;
 
-  NiddlerHttpOverrides(this._niddler, this._sanitizer,
+  NiddlerHttpOverrides(this._niddler, this._computer, this._sanitizer,
       {required this.includeStackTraces});
 
   @override
@@ -26,6 +27,7 @@ class NiddlerHttpOverrides extends HttpOverrides {
       super.createHttpClient(context),
       _niddler,
       _sanitizer,
+      _computer,
       includeStackTraces: includeStackTraces,
     );
   }
@@ -36,6 +38,7 @@ class _NiddlerHttpClient implements HttpClient {
   final Niddler _niddler;
   final StackTraceSanitizer _sanitizer;
   final bool includeStackTraces;
+  final Computer _computer;
 
   @override
   bool get autoUncompress => _delegate.autoUncompress;
@@ -68,7 +71,8 @@ class _NiddlerHttpClient implements HttpClient {
   @override
   set userAgent(String? value) => _delegate.userAgent = value;
 
-  _NiddlerHttpClient(this._delegate, this._niddler, this._sanitizer,
+  _NiddlerHttpClient(
+      this._delegate, this._niddler, this._sanitizer, this._computer,
       {required this.includeStackTraces});
 
   @override
@@ -153,8 +157,15 @@ class _NiddlerHttpClient implements HttpClient {
     }
 
     return Future.value(_NiddlerHttpClientRequest(
-        url, method, _delegate, _niddler, SimpleUUID.uuid(), _sanitizer,
-        includeStackTraces: includeStackTraces));
+      url,
+      method,
+      _delegate,
+      _niddler,
+      _computer,
+      SimpleUUID.uuid(),
+      _sanitizer,
+      includeStackTraces: includeStackTraces,
+    ));
   }
 
   @override
@@ -218,6 +229,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   final HttpClient _delegateClient;
   final List<String>? _stackTraces;
   final String requestId;
+  final Computer _computer;
 
   final _requestTime = DateTime.now().millisecondsSinceEpoch;
 
@@ -263,6 +275,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     this.method,
     this._delegateClient,
     this._niddler,
+    this._computer,
     this.requestId,
     StackTraceSanitizer sanitizer, {
     bool includeStackTraces = false,
@@ -565,6 +578,14 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   @override
   void writeln([Object? obj = '']) => write('$obj\n');
+
+  Future<String> _encodeBody(
+      NiddlerMessageBase message, List<List<int>>? bytes) async {
+    return _computer.compute(
+      _encodeBodyJson,
+      param: _IsolateData(message, bytes),
+    );
+  }
 }
 
 class _IsolateData {
@@ -584,12 +605,6 @@ String _encodeBodyJson(_IsolateData body) {
     }
   }
   return body.message.toJsonString();
-}
-
-Future<String> _encodeBody(
-    NiddlerMessageBase message, List<List<int>>? bytes) async {
-  return Executor()
-      .execute(arg1: _IsolateData(message, bytes), fun1: _encodeBodyJson);
 }
 
 Trace _filterFrames(Trace source, StackTraceSanitizer sanitizer) {

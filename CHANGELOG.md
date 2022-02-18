@@ -1,3 +1,7 @@
+## 1.4.1
+
+- Replaced worker manager with Computer
+
 ## 1.4.0
 
 - Fixed delays caused by json serialization

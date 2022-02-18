@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:computer/computer.dart';
 import 'package:dart_service_announcement/dart_service_announcement.dart';
 import 'package:niddler_dart/src/niddler_generic.dart';
 import 'package:niddler_dart/src/niddler_message.dart';
@@ -101,6 +102,7 @@ class NiddlerImpl implements Niddler {
   void install() {
     HttpOverrides.global = NiddlerHttpOverrides(
       this,
+      _implementation._computer,
       _implementation.stackTraceSanitizer,
       includeStackTraces: _implementation.includeStackTraces,
     );
@@ -118,6 +120,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   final int protocolVersion = 3;
   final StackTraceSanitizer stackTraceSanitizer;
   final bool includeStackTraces;
+  final Computer _computer;
   bool _started = false;
   late final BaseServerAnnouncementManager _announcementManager;
 
@@ -129,7 +132,8 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
     int port = 0,
     this.serverInfo,
   })  : _messagesCache = NiddlerMessageCache(maxCacheSize),
-        _server = NiddlerServer(port) {
+        _server = NiddlerServer(port),
+        _computer = Computer.create() {
     _server.connectionListener = this;
     _announcementManager =
         ServerAnnouncementManager(bundleId, _ANNOUNCEMENT_SOCKET_PORT, _server);
@@ -154,6 +158,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
     if (waitForDebugger) {
       await _server.debugger.waitForConnection();
     }
+    await _computer.turnOn();
     return true;
   }
 
@@ -161,6 +166,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
     _started = false;
     await _announcementManager.stop();
     await _server.shutdown();
+    await _computer.turnOff();
   }
 
   void addBlacklist(RegExp item) {
