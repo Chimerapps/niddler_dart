@@ -51,8 +51,8 @@ Future<void> main(List<String> arguments) async {
 }
 
 Future<void> executeGetTypeCode() async {
-  final result =
-      await http.get(Uri.parse('http://jsonplaceholder.typicode.com/posts'));
+  final result = await http
+      .get(Uri.parse('http://jsonplaceholder.typicode.com/posts?test=123'));
   print(result.body);
 }
 

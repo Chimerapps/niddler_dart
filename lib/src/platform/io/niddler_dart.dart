@@ -221,6 +221,19 @@ class _NiddlerHttpClient implements HttpClient {
     return Uri(
         scheme: 'http', host: host, port: port, path: newPath, query: query);
   }
+
+  @override
+  set connectionFactory(
+      Future<ConnectionTask<Socket>> Function(
+              Uri url, String? proxyHost, int? proxyPort)?
+          f) {
+    _delegate.connectionFactory = f;
+  }
+
+  @override
+  set keyLog(Function(String line)? callback) {
+    _delegate.keyLog = callback;
+  }
 }
 
 class _NiddlerHttpClientRequest implements HttpClientRequest {
@@ -313,7 +326,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   @override
   Future<HttpClientResponse> close() async {
-    final _originalRequest = NiddlerRequest(
+    final originalRequest = NiddlerRequest(
       url: uri.toString(),
       method: method,
       stackTraces: _stackTraces,
@@ -322,13 +335,13 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
       timeStamp: _requestTime,
       headers: <String, List<String>>{},
     );
-    headers.forEach((key, values) => _originalRequest.headers[key] = values);
+    headers.forEach((key, values) => originalRequest.headers[key] = values);
 
-    var executingRequest = _originalRequest;
+    var executingRequest = originalRequest;
     Future<HttpClientRequest> Function()? requestCreator;
     if (_niddler.debugger.isActive) {
       final overriddenRequest = await _niddler.debugger
-          .overrideRequest(_originalRequest, requestBodyBytes);
+          .overrideRequest(originalRequest, requestBodyBytes);
       if (overriddenRequest != null) {
         final newUri = Uri.parse(overriddenRequest.url);
         requestCreator = () async {
@@ -413,7 +426,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     try {
       final createdRequest = await requestCreator();
       final response = await createdRequest.close();
-      final handledResponse = await _handleResponse(_originalRequest, response);
+      final handledResponse = await _handleResponse(originalRequest, response);
       _completer.complete(handledResponse);
     } catch (e, trace) {
       _completer.completeError(e, trace);

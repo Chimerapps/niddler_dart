@@ -1,3 +1,7 @@
+## 1.5.0
+
+- Support dart 2.17 and up
+
 ## 1.4.1
 
 - Replaced worker manager with Computer
