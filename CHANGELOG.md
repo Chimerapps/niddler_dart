@@ -1,3 +1,7 @@
+## 1.5.2
+
+- Fix bad import causing compilation errors for non-web projects
+
 ## 1.5.1
 
 - Speed up niddler startup time by not waiting for isolates to spool up
