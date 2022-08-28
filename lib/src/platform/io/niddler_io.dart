@@ -102,6 +102,7 @@ class NiddlerImpl implements Niddler {
   void install() {
     HttpOverrides.global = NiddlerHttpOverrides(
       this,
+      _implementation._computerReady.future,
       _implementation._computer,
       _implementation.stackTraceSanitizer,
       includeStackTraces: _implementation.includeStackTraces,
@@ -121,6 +122,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
   final StackTraceSanitizer stackTraceSanitizer;
   final bool includeStackTraces;
   final Computer _computer;
+  final _computerReady = Completer<void>();
   bool _started = false;
   late final BaseServerAnnouncementManager _announcementManager;
 
@@ -158,7 +160,10 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
     if (waitForDebugger) {
       await _server.debugger.waitForConnection();
     }
-    await _computer.turnOn();
+    _computer.turnOn().then((_) {
+      // ignore: void_checks
+      _computerReady.complete(1);
+    });
     return true;
   }
 
@@ -166,6 +171,7 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
     _started = false;
     await _announcementManager.stop();
     await _server.shutdown();
+    await _computerReady.future;
     await _computer.turnOff();
   }
 

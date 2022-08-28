@@ -1,3 +1,7 @@
+## 1.5.1
+
+- Speed up niddler startup time by not waiting for isolates to spool up
+
 ## 1.5.0
 
 - Support dart 2.17 and up

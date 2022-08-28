@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:html';
 import 'dart:io';
 
 import 'package:computer/computer.dart';
@@ -16,9 +17,11 @@ class NiddlerHttpOverrides extends HttpOverrides {
   final Niddler _niddler;
   final StackTraceSanitizer _sanitizer;
   final bool includeStackTraces;
+  final Future<void> _computerReady;
   final Computer _computer;
 
-  NiddlerHttpOverrides(this._niddler, this._computer, this._sanitizer,
+  NiddlerHttpOverrides(
+      this._niddler, this._computerReady, this._computer, this._sanitizer,
       {required this.includeStackTraces});
 
   @override
@@ -27,6 +30,7 @@ class NiddlerHttpOverrides extends HttpOverrides {
       super.createHttpClient(context),
       _niddler,
       _sanitizer,
+      _computerReady,
       _computer,
       includeStackTraces: includeStackTraces,
     );
@@ -39,6 +43,7 @@ class _NiddlerHttpClient implements HttpClient {
   final StackTraceSanitizer _sanitizer;
   final bool includeStackTraces;
   final Computer _computer;
+  final Future<void> _computerReady;
 
   @override
   bool get autoUncompress => _delegate.autoUncompress;
@@ -71,8 +76,8 @@ class _NiddlerHttpClient implements HttpClient {
   @override
   set userAgent(String? value) => _delegate.userAgent = value;
 
-  _NiddlerHttpClient(
-      this._delegate, this._niddler, this._sanitizer, this._computer,
+  _NiddlerHttpClient(this._delegate, this._niddler, this._sanitizer,
+      this._computerReady, this._computer,
       {required this.includeStackTraces});
 
   @override
@@ -161,6 +166,7 @@ class _NiddlerHttpClient implements HttpClient {
       method,
       _delegate,
       _niddler,
+      _computerReady,
       _computer,
       SimpleUUID.uuid(),
       _sanitizer,
@@ -243,6 +249,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
   final List<String>? _stackTraces;
   final String requestId;
   final Computer _computer;
+  final Future<void> _computerReady;
 
   final _requestTime = DateTime.now().millisecondsSinceEpoch;
 
@@ -288,6 +295,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
     this.method,
     this._delegateClient,
     this._niddler,
+    this._computerReady,
     this._computer,
     this.requestId,
     StackTraceSanitizer sanitizer, {
@@ -594,6 +602,7 @@ class _NiddlerHttpClientRequest implements HttpClientRequest {
 
   Future<String> _encodeBody(
       NiddlerMessageBase message, List<List<int>>? bytes) async {
+    await _computerReady;
     return _computer.compute(
       _encodeBodyJson,
       param: _IsolateData(message, bytes),
