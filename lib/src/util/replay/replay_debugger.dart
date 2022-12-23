@@ -28,6 +28,8 @@ class ReplayDebugger implements NiddlerDebugger {
   @override
   bool isActive;
 
+  /// Create a new [ReplayDebugger] that will replay the given HAR file from [harContent]
+  /// If [isActive] is true (default), the debugger will be active and will intercept requests
   ReplayDebugger({required String harContent, this.isActive = true}) {
     _harFuture = _loadHarContent(harContent);
   }

@@ -1,3 +1,7 @@
+## 1.6.0
+
+- Add replay debugger that can be used to replay responses from a saved har file (niddler -> save)
+
 ## 1.5.2
 
 - Fix bad import causing compilation errors for non-web projects
