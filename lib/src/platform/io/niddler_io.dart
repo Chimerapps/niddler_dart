@@ -111,6 +111,11 @@ class NiddlerImpl implements Niddler {
 
   @override
   NiddlerDebugger get debugger => _implementation.debugger;
+
+  @override
+  void overrideDebugger(NiddlerDebugger debugger) {
+    _implementation.overrideDebugger(debugger);
+  }
 }
 
 class _NiddlerImplementation implements NiddlerServerConnectionListener {
@@ -184,6 +189,10 @@ class _NiddlerImplementation implements NiddlerServerConnectionListener {
 
   bool isBlacklisted(String url) {
     return _blacklist.any((item) => item.hasMatch(url));
+  }
+
+  void overrideDebugger(NiddlerDebugger debugger) {
+    _server.overrideDebugger(debugger);
   }
 
   @override
