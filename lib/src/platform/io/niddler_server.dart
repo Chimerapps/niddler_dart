@@ -24,7 +24,7 @@ class NiddlerServer extends ToolingServer {
   final int _port;
   final _lock = Lock();
   final List<NiddlerConnection> _connections = [];
-  final NiddlerDebuggerImpl _debugger = NiddlerDebuggerImpl();
+  NiddlerDebugger _debugger = NiddlerDebuggerImpl();
   final String tag = SimpleUUID.uuid().substring(0, 6);
 
   @override
@@ -80,10 +80,15 @@ class NiddlerServer extends ToolingServer {
   }
 
   void _onSocketClosed(NiddlerConnection socket) {
-    _debugger.onConnectionClosed(socket);
+    final debugger = _debugger;
+    if (debugger is NiddlerDebuggerImpl) debugger.onConnectionClosed(socket);
     _lock.synchronized(() async {
       _connections.remove(socket);
     });
+  }
+
+  void overrideDebugger(NiddlerDebugger debugger) {
+    _debugger = debugger;
   }
 }
 
@@ -122,14 +127,14 @@ class NiddlerConnection {
     switch (type) {
       case _MESSAGE_START_DEBUG:
         if (_authenticated) {
-          _server._debugger.onDebuggerAttached(this);
+          _asImpl(_server._debugger)?.onDebuggerAttached(this);
         }
         break;
       case _MESSAGE_END_DEBUG:
-        _server._debugger.onDebuggerConnectionClosed();
+        _asImpl(_server._debugger)?.onDebuggerConnectionClosed();
         break;
       case _MESSAGE_DEBUG_CONTROL:
-        _server._debugger.onControlMessage(parsedJson, this);
+        _asImpl(_server._debugger)?.onControlMessage(parsedJson, this);
         break;
     }
   }
@@ -137,4 +142,7 @@ class NiddlerConnection {
   void close() {
     _socket.close();
   }
+
+  NiddlerDebuggerImpl? _asImpl(NiddlerDebugger debugger) =>
+      debugger is NiddlerDebuggerImpl ? debugger : null;
 }

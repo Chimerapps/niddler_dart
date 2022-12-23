@@ -49,6 +49,9 @@ class NiddlerNoop implements Niddler {
 
   @override
   NiddlerDebugger get debugger => const NiddlerDebuggerNoop._();
+
+  @override
+  void overrideDebugger(NiddlerDebugger debugger) {}
 }
 
 class NiddlerDebuggerNoop implements NiddlerDebugger {

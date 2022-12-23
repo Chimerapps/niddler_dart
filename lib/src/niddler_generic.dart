@@ -2,6 +2,7 @@
 // All rights reserved. Use of this source code is governed by
 // an MIT license that can be found in the LICENSE file.
 
+import 'package:niddler_dart/niddler_dart.dart';
 import 'package:niddler_dart/src/niddler_message.dart';
 import 'package:stack_trace/stack_trace.dart';
 
@@ -51,6 +52,9 @@ abstract class Niddler {
 
   /// The debugger instance used to debug/change network requests/responses
   NiddlerDebugger get debugger;
+
+  /// Override the default debugger with a custom debugger
+  void overrideDebugger(NiddlerDebugger debugger);
 }
 
 // ignore: one_member_abstracts
